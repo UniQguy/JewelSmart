@@ -1,0 +1,29 @@
+name: jewelsmart
+description: A new Flutter project for premium jewelry.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  # Added for state management and routing later
+  flutter_riverpod: ^2.4.9
+  shimmer: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/logos/
+    - assets/products/
+  # Assets section is omitted as requested
