@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/router/app_routes.dart';
+import '../data/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -9,240 +11,218 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage> {
   final Color luxuryGold = const Color(0xFFD4AF37);
-  late AnimationController _animationController;
+  final AuthService _authService = AuthService();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+  bool _isLoading = false;
+  bool _isPasswordVisible = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          // 1. DEEP BLUR BACKGROUND
-          Positioned.fill(
-            child: Image.asset('assets/images/login_bg.jpg', fit: BoxFit.cover),
-          ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(color: Colors.black.withOpacity(0.4)),
+          // 1. DEPTH LAYER: CINEMATIC ZOOM LOOP
+          _buildCinematicBackground(),
+
+          // 2. GLASS LAYER: ETHERIAL BLUR
+          _buildGlassOverlay(),
+
+          // 3. CONTENT LAYER
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 100),
+                  _buildBrandHeroText(),
+                  const SizedBox(height: 80),
+                  _buildEditorialField("MEMBER IDENTIFICATION", Icons.alternate_email_rounded, _emailController),
+                  const SizedBox(height: 35),
+                  _buildEditorialField("VAULT SECURITY KEY", Icons.lock_person_outlined, _passController, isPass: true),
+                  const SizedBox(height: 60),
+                  _buildPrimaryAction(),
+                  const SizedBox(height: 40),
+                  _buildSocialDiscovery(),
+                  const SizedBox(height: 80),
+                  _buildBottomNavigation(),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           ),
 
-          // 2. CENTERED CONTENT
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // SHIMMERING TITLE: Liquid Gold
-                AnimatedBuilder(
-                  animation: _animationController,
-                  builder: (context, child) {
-                    return ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: [luxuryGold, Colors.white, luxuryGold],
-                        stops: [
-                          _animationController.value - 0.2,
-                          _animationController.value,
-                          _animationController.value + 0.2
-                        ],
-                      ).createShader(bounds),
-                      child: const Text(
-                        'JEWEL SMART',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 32,
-                          letterSpacing: 10,
-                          shadows: [Shadow(color: Colors.black54, blurRadius: 10)],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const Text('AUTHENTIC LUXURY',
-                    style: TextStyle(color: Colors.white38, fontSize: 10, letterSpacing: 5)
-                ),
-
-                const SizedBox(height: 50),
-
-                // THE LIQUID GLASS BOX
-                AnimatedBuilder(
-                  animation: _animationController,
-                  builder: (context, child) {
-                    return CustomPaint(
-                      painter: LiquidBorderPainter(_animationController.value, luxuryGold),
-                      child: Container(
-                        width: MediaQuery.of(context).size.width * 0.85,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black.withOpacity(0.5),
-                                blurRadius: 40,
-                                spreadRadius: 10
-                            )
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                            child: Container(
-                              padding: const EdgeInsets.all(30),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.08), // Crystal Layer
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withOpacity(0.1)),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _buildCrystalInput("USERNAME", Icons.person_outline),
-                                  const SizedBox(height: 25),
-                                  _buildCrystalInput("PASSWORD", Icons.lock_outline, isPass: true),
-
-                                  const SizedBox(height: 20),
-
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      _linkButton("Forgot Password?", () {
-                                        // TODO: Add forgot password logic
-                                      }),
-
-                                      GestureDetector(
-                                        onTap: () => Navigator.pushNamed(context, AppRoutes.signup),
-                                        child: const Text(
-                                          "New User?",
-                                          style: TextStyle(
-                                            color: Colors.white30,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w300,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 40),
-
-                                  // LOG IN BUTTON: Navigates to MAIN WRAPPER
-                                  GestureDetector(
-                                    onTap: () {
-                                      // POINTING TO MAIN ROUTE (With Nav Bar)
-                                      Navigator.pushNamedAndRemoveUntil(
-                                        context,
-                                        AppRoutes.main,
-                                            (route) => false,
-                                      );
-                                    },
-                                    child: Container(
-                                      width: double.infinity,
-                                      height: 55,
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [luxuryGold, const Color(0xFFF9E4B7), luxuryGold],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [
-                                          BoxShadow(
-                                              color: luxuryGold.withOpacity(0.3),
-                                              blurRadius: 20,
-                                              offset: const Offset(0, 10)
-                                          )
-                                        ],
-                                      ),
-                                      child: const Center(
-                                        child: Text('LOG IN',
-                                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 4)
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
+          if (_isLoading) _buildGlobalLoader(),
         ],
       ),
     );
   }
 
-  Widget _buildCrystalInput(String label, IconData icon, {bool isPass = false}) {
+  Widget _buildCinematicBackground() {
+    return Positioned.fill(
+      child: Image.asset(
+        'assets/images/login_bg.jpg',
+        fit: BoxFit.cover,
+      ).animate(onPlay: (c) => c.repeat())
+          .scale(begin: const Offset(1.1, 1.1), end: const Offset(1.2, 1.2), duration: 20.seconds, curve: Curves.easeInOut)
+          .shimmer(delay: 2.seconds, duration: 4.seconds, color: luxuryGold.withOpacity(0.1)),
+    );
+  }
+
+  Widget _buildGlassOverlay() {
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.black.withOpacity(0.8),
+              Colors.black.withOpacity(0.4),
+              Colors.black.withOpacity(0.9),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBrandHeroText() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2)),
+        const Text("ESTABLISHED 2026",
+            style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 5, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 15),
+        Text("ENTER THE\nPRIVATE VAULT",
+            style: TextStyle(color: luxuryGold, fontSize: 52, fontWeight: FontWeight.w100, height: 0.9, letterSpacing: -3))
+            .animate().fadeIn(duration: 1200.ms).slideX(begin: -0.2),
+      ],
+    );
+  }
+
+  Widget _buildEditorialField(String label, IconData icon, TextEditingController controller, {bool isPass = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 5),
         TextField(
-          obscureText: isPass,
-          style: const TextStyle(color: Colors.white, fontSize: 15),
+          controller: controller,
+          obscureText: isPass && !_isPasswordVisible,
+          style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 1, fontWeight: FontWeight.w200),
           cursorColor: luxuryGold,
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: luxuryGold.withOpacity(0.8), size: 20),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: luxuryGold, width: 2)),
+            prefixIcon: Icon(icon, color: luxuryGold.withOpacity(0.4), size: 18),
+            suffixIcon: isPass ? IconButton(
+              icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.white10, size: 16),
+              onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+            ) : null,
+            enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10, width: 0.5)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: luxuryGold, width: 1)),
+            contentPadding: const EdgeInsets.symmetric(vertical: 20),
           ),
         ),
       ],
     );
   }
 
-  Widget _linkButton(String text, VoidCallback onTap) {
+  Widget _buildPrimaryAction() {
     return GestureDetector(
-      onTap: onTap,
-      child: Text(text, style: const TextStyle(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.w300)),
+      onTap: () async {
+        setState(() => _isLoading = true);
+        final user = await _authService.signInWithEmail(_emailController.text, _passController.text);
+        setState(() => _isLoading = false);
+        if (user != null) {
+          Navigator.pushReplacementNamed(context, AppRoutes.main);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("VAULT ACCESS DENIED")));
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        height: 70,
+        decoration: BoxDecoration(
+          color: luxuryGold,
+          boxShadow: [BoxShadow(color: luxuryGold.withOpacity(0.3), blurRadius: 40, spreadRadius: 5)],
+        ),
+        child: const Center(
+          child: Text("AUTHENTICATE ACCESS",
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 11)),
+        ),
+      ),
+    ).animate().fadeIn(delay: 600.ms).scale(begin: const Offset(0.9, 0.9));
+  }
+
+  Widget _buildSocialDiscovery() {
+    return Center(
+      child: Column(
+        children: [
+          const Text("OR DISCOVER VIA", style: TextStyle(color: Colors.white12, fontSize: 9, letterSpacing: 4)),
+          const SizedBox(height: 25),
+          GestureDetector(
+            onTap: () async {
+              final user = await _authService.signInWithGoogle();
+              if (user != null) Navigator.pushReplacementNamed(context, AppRoutes.main);
+            },
+            child: ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.02),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset('assets/images/google_icon.png', width: 20),
+                      const SizedBox(width: 20),
+                      const Text("GOOGLE IDENTITY", style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 800.ms);
+  }
+
+  Widget _buildBottomNavigation() {
+    return Center(
+      child: GestureDetector(
+        onTap: () => Navigator.pushNamed(context, AppRoutes.signup),
+        child: RichText(
+          text: TextSpan(
+            text: "NOT A MEMBER? ",
+            style: const TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 3),
+            children: [
+              TextSpan(text: "JOIN THE LEGACY", style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900)),
+            ],
+          ),
+        ),
+      ),
     );
   }
-}
 
-class LiquidBorderPainter extends CustomPainter {
-  final double progress;
-  final Color gold;
-  LiquidBorderPainter(this.progress, this.gold);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final paint = Paint()
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..shader = SweepGradient(
-        colors: [Colors.transparent, gold, Colors.white, gold, Colors.transparent],
-        stops: const [0.0, 0.4, 0.5, 0.6, 1.0],
-        transform: GradientRotation(progress * 2 * 3.14159),
-      ).createShader(rect);
-
-    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(20)), paint);
+  Widget _buildGlobalLoader() {
+    return Container(
+      color: Colors.black.withOpacity(0.9),
+      child: Center(
+        child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1)
+            .animate(onPlay: (c) => c.repeat())
+            .scale(duration: 1.seconds, begin: const Offset(1, 1), end: const Offset(1.5, 1.5)),
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }

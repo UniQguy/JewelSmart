@@ -52,16 +52,20 @@ class _LuxuryProductCardState extends State<LuxuryProductCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. IMAGE WITH SOFT VIGNETTE
+              // 1. IMAGE WITH HERO TRANSITION
               Expanded(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                      child: Image.asset(
-                        'assets/images/login_bg.jpg', // Your default placeholder
-                        fit: BoxFit.cover,
+                    Hero(
+                      // Unique tag allows the detail page to catch this animation
+                      tag: 'product_image_${widget.title}',
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                        child: Image.asset(
+                          'assets/images/login_bg.jpg',
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                     // Glassmorphic overlay for image depth

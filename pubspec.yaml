@@ -10,9 +10,23 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.6
-  # Added for state management and routing later
+
+  # State Management & UI
   flutter_riverpod: ^2.4.9
   shimmer: ^3.0.0
+  flutter_staggered_animations: ^1.0.0
+
+  # Hardware & AR
+  camera: ^0.11.0
+  permission_handler: ^11.3.1
+
+  # Firebase & Identity
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.17.0
+  google_sign_in: ^6.2.1
+
+  # Advanced Visuals
+  flutter_animate: ^4.5.0
 
 dev_dependencies:
   flutter_test:
@@ -26,4 +40,3 @@ flutter:
     - assets/images/
     - assets/logos/
     - assets/products/
-  # Assets section is omitted as requested

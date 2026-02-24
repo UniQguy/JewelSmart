@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "456049447702",
+    "project_id": "jewelsmart-231fb",
+    "storage_bucket": "jewelsmart-231fb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:456049447702:android:aa87a24f6b1a51c8357637",
+        "android_client_info": {
+          "package_name": "com.example.jewelsmart"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "456049447702-8cu1jtf16ascjlf1lqduap1q1tmjeei3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.jewelsmart",
+            "certificate_hash": "e05eebc705da2313e104f56cbd314bf1f3d6c792"
+          }
+        },
+        {
+          "client_id": "456049447702-p6nap1ecf4jj0k8is78bh6c9a16gkjdk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCqboVlTKaofY6kHA3QlQRyQpxXFpTVxg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "456049447702-p6nap1ecf4jj0k8is78bh6c9a16gkjdk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "456049447702-m0703hm079tmakpcniftdguid5jiakph.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.jewelsmart"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
