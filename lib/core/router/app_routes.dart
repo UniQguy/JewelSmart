@@ -1,8 +1,6 @@
 class AppRoutes {
   // Entrance
   static const String splash = '/';
-
-  // The logic gate that checks Firebase login status
   static const String authWrapper = '/auth-wrapper';
 
   // Authentication
@@ -15,6 +13,11 @@ class AppRoutes {
   static const String home = '/home';
   static const String search = '/search';
   static const String profile = '/profile';
+
+  // NEW: Dashboards & Administration
+  static const String adminDashboard = '/admin-dashboard';
+  static const String staffDashboard = '/staff-dashboard';
+  static const String repairManagement = '/repair-management';
 
   // Shopping & Collections
   static const String cart = '/cart';

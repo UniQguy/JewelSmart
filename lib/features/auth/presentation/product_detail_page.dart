@@ -1,26 +1,22 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// Ensure these paths match your actual project structure
 import '../../cart/providers/cart_provider.dart';
 import '../domain/product_model.dart';
 
 class ProductDetailPage extends ConsumerWidget {
-  // FIX: Removed 'required Product product' to match the AppRouter call
   const ProductDetailPage({super.key});
 
   final Color luxuryGold = const Color(0xFFD4AF37);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // FIX: Safely extract the product data passed via Navigator
     final product = ModalRoute.of(context)!.settings.arguments as Product;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // CINEMATIC SCROLLING AREA
           CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
@@ -36,7 +32,7 @@ class ProductDetailPage extends ConsumerWidget {
                       _buildDescriptionSection(product),
                       const SizedBox(height: 40),
                       _buildSpecifications(product),
-                      const SizedBox(height: 150), // Buffer for glass bar
+                      const SizedBox(height: 150),
                     ],
                   ),
                 ),
@@ -44,7 +40,6 @@ class ProductDetailPage extends ConsumerWidget {
             ],
           ),
 
-          // FIXED GLASS ACTION BAR
           Positioned(
             bottom: 0,
             left: 0,
@@ -75,9 +70,8 @@ class ProductDetailPage extends ConsumerWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // HERO WRAPPER: Matches tag in LuxuryProductCard
             Hero(
-              tag: 'product_image_${product.title}',
+              tag: 'product_image_${product.productId}',
               child: Image.asset(product.imagePath, fit: BoxFit.cover),
             ),
             Container(
@@ -110,7 +104,7 @@ class ProductDetailPage extends ConsumerWidget {
         Text(product.title.replaceAll(' ', '\n'),
             style: TextStyle(color: luxuryGold, fontSize: 38, fontWeight: FontWeight.w100, height: 1.0, letterSpacing: -1)),
         const SizedBox(height: 15),
-        Text(product.price,
+        Text(product.formattedPrice,
             style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 1)),
       ],
     );
@@ -133,12 +127,11 @@ class ProductDetailPage extends ConsumerWidget {
 
   Widget _buildSpecifications(Product product) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _specItem("METAL", product.metal),
-        const SizedBox(width: 40),
+        _specItem("METAL", product.purity),
         _specItem("STONE", product.stone),
-        const SizedBox(width: 40),
-        _specItem("WEIGHT", "14.2G"),
+        _specItem("WEIGHT", "${product.weight}G"),
       ],
     );
   }
@@ -166,8 +159,9 @@ class ProductDetailPage extends ConsumerWidget {
           ),
           child: GestureDetector(
             onTap: () {
-              // Add product to Riverpod Cart State
-              ref.read(cartProvider.notifier).update((state) => [...state, product.title]);
+              // FIXED: Now uses the specialized addItem method from CartNotifier
+              // This fixes the 'update' isn't defined error
+              ref.read(cartProvider.notifier).addItem(product);
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

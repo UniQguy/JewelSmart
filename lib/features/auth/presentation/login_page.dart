@@ -26,13 +26,8 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. DEPTH LAYER: CINEMATIC ZOOM LOOP
           _buildCinematicBackground(),
-
-          // 2. GLASS LAYER: ETHERIAL BLUR
           _buildGlassOverlay(),
-
-          // 3. CONTENT LAYER
           SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -57,7 +52,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-
           if (_isLoading) _buildGlobalLoader(),
         ],
       ),
@@ -139,10 +133,10 @@ class _LoginPageState extends State<LoginPage> {
       onTap: () async {
         setState(() => _isLoading = true);
         final user = await _authService.signInWithEmail(_emailController.text, _passController.text);
-        setState(() => _isLoading = false);
-        if (user != null) {
-          Navigator.pushReplacementNamed(context, AppRoutes.main);
-        } else {
+
+        // Note: AuthWrapper handles navigation automatically
+        if (user == null) {
+          setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("VAULT ACCESS DENIED")));
         }
       },
@@ -169,8 +163,15 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(height: 25),
           GestureDetector(
             onTap: () async {
+              setState(() => _isLoading = true); // Triggers cinematic loader
               final user = await _authService.signInWithGoogle();
-              if (user != null) Navigator.pushReplacementNamed(context, AppRoutes.main);
+
+              // AuthWrapper handles redirection once the Firestore sync is complete
+              if (user == null) {
+                setState(() => _isLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("GOOGLE AUTHENTICATION CANCELED")));
+              }
             },
             child: ClipRRect(
               child: BackdropFilter(

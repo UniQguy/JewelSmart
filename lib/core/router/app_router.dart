@@ -11,18 +11,21 @@ import '../../features/auth/presentation/product_detail_page.dart';
 import '../../features/auth/presentation/search_screen.dart';
 import '../../features/auth/presentation/success_page.dart';
 import '../../features/auth/presentation/category_page.dart';
-import '../../features/auth/domain/product_model.dart'; // REQUIRED for passing product data
+import '../../features/auth/domain/product_model.dart';
 import '../../features/cart/presentation/cart_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
+
+// NEW IMPORTS: Administrative Layers
+import '../../features/auth/presentation/admin_dashboard.dart';
+import '../../features/auth/presentation/staff_dashboard.dart';
+import '../../features/auth/presentation/repair_management_screen.dart';
 
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
-    // 1. Initial Entry Point
       case AppRoutes.splash:
         return MaterialPageRoute(builder: (_) => const SplashScreen());
 
-    // 2. The Logic Gate (Splash redirects here)
       case AppRoutes.authWrapper:
         return MaterialPageRoute(builder: (_) => const AuthWrapper());
 
@@ -39,11 +42,20 @@ class AppRouter {
       case AppRoutes.search:
         return MaterialPageRoute(builder: (_) => const SearchScreen());
 
-    // 3. FIXED: Passes the Product object to prevent Red Screen error
+    // NEW CASES: Fulfills Admin and Staff Use Cases
+      case AppRoutes.adminDashboard:
+        return MaterialPageRoute(builder: (_) => const AdminDashboard());
+
+      case AppRoutes.staffDashboard:
+        return MaterialPageRoute(builder: (_) => const StaffDashboard());
+
+      case AppRoutes.repairManagement:
+        return MaterialPageRoute(builder: (_) => const RepairManagementScreen());
+
       case AppRoutes.productDetail:
         return MaterialPageRoute(
-          builder: (_) => const ProductDetailPage(), // No argument needed here now
-          settings: settings, // This passes the product data
+          builder: (_) => const ProductDetailPage(),
+          settings: settings,
         );
 
       case AppRoutes.cart:
@@ -55,7 +67,6 @@ class AppRouter {
       case AppRoutes.profile:
         return MaterialPageRoute(builder: (_) => const ProfilePage());
 
-    // 4. FIXED: DYNAMIC CATEGORY ROUTE
       case AppRoutes.category:
         final String categoryName = settings.arguments as String? ?? 'Collection';
         return MaterialPageRoute(

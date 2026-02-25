@@ -17,22 +17,89 @@ class ProfilePage extends StatelessWidget {
           children: [
             const SizedBox(height: 80),
 
-            // 1. ARCHITECTURAL AVATAR
+            // 1. ARCHITECTURAL AVATAR (User Table: name) [cite: 3]
             _buildProfileHeader(),
 
             const SizedBox(height: 40),
 
-            // 2. DYNAMIC LOYALTY PROGRESS BAR
-            _buildLoyaltyProgress(),
+            // 2. DYNAMIC ORDER TRACKER (State Chart Diagram: Order Status)
+            _buildOrderTrackingSection("InProgress"), // Matches dynamic state [cite: 221, 226]
 
             const SizedBox(height: 50),
 
-            // 3. STAGGERED VAULT MENU
+            // 3. STAGGERED VAULT MENU (Use Case: View Purchase History) [cite: 18, 35]
             _buildVaultMenu(context),
 
-            const SizedBox(height: 120), // Space for Floating Dock
+            const SizedBox(height: 120),
           ],
         ),
+      ),
+    );
+  }
+
+  // --- NEW: Order Tracking Component Based on State Chart Diagram  ---
+  Widget _buildOrderTrackingSection(String currentStatus) {
+    // Exact states from the Order/Repair State Chart
+    final List<String> statuses = ["Created", "Accepted", "InProgress", "Completed", "Delivered"];
+    int currentIndex = statuses.indexOf(currentStatus);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("REPAIR & CUSTOM ORDERS",
+              style: TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.02),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("ORDER #JS2026", style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 1)),
+                    Text(currentStatus.toUpperCase(),
+                        style: const TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 25),
+                // Custom Stepper implementation for luxury UI
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(statuses.length, (index) {
+                    bool isPassed = index <= currentIndex;
+                    return Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            height: 6, width: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isPassed ? luxuryGold : Colors.white10,
+                              boxShadow: isPassed ? [BoxShadow(color: luxuryGold.withOpacity(0.4), blurRadius: 4)] : [],
+                            ),
+                          ),
+                          if (index != statuses.length - 1)
+                            Expanded(
+                              child: Container(
+                                height: 0.5,
+                                color: isPassed ? luxuryGold.withOpacity(0.5) : Colors.white10,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -43,24 +110,15 @@ class ProfilePage extends StatelessWidget {
         Stack(
           alignment: Alignment.center,
           children: [
-            // Ambient Sparkle Glow
             Container(
-              height: 130,
-              width: 130,
+              height: 130, width: 130,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: luxuryGold.withOpacity(0.15),
-                    blurRadius: 50,
-                    spreadRadius: 5,
-                  )
-                ],
+                boxShadow: [BoxShadow(color: luxuryGold.withOpacity(0.15), blurRadius: 50, spreadRadius: 5)],
               ),
             ),
             Container(
-              height: 110,
-              width: 110,
+              height: 110, width: 110,
               decoration: BoxDecoration(
                 border: Border.all(color: luxuryGold.withOpacity(0.5), width: 0.8),
                 shape: BoxShape.circle,
@@ -74,53 +132,12 @@ class ProfilePage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 25),
-        const Text("PRASHANT",
+        const Text("PRASHANT", // User Name from User Table [cite: 3]
             style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w100, letterSpacing: 10)),
         const SizedBox(height: 10),
         Text("EMERALD ELITE MEMBER",
             style: TextStyle(color: luxuryGold, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 4)),
       ],
-    );
-  }
-
-  Widget _buildLoyaltyProgress() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("TIER PROGRESS",
-                  style: TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 3, fontWeight: FontWeight.bold)),
-              Text("75% TO SAPPHIRE",
-                  style: TextStyle(color: luxuryGold, fontSize: 8, letterSpacing: 2, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 15),
-          // Liquid Progress Bar
-          Stack(
-            children: [
-              Container(
-                height: 2,
-                width: double.infinity,
-                color: Colors.white.withOpacity(0.05),
-              ),
-              AnimatedContainer(
-                duration: const Duration(seconds: 2),
-                height: 2,
-                width: 250, // This would be dynamic based on points
-                decoration: BoxDecoration(
-                  color: luxuryGold,
-                  boxShadow: [
-                    BoxShadow(color: luxuryGold.withOpacity(0.5), blurRadius: 10, spreadRadius: 1)
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -136,13 +153,13 @@ class ProfilePage extends StatelessWidget {
               child: FadeInAnimation(child: widget),
             ),
             children: [
-              _vaultItem(Icons.history_edu_outlined, "ACQUISITION HISTORY"), // Linked to Purchase History [cite: 93]
+              _vaultItem(Icons.history_edu_outlined, "ACQUISITION HISTORY"), // Linked to View Purchase History [cite: 18, 35]
               _vaultItem(Icons.favorite_border_rounded, "CURATED WISHLIST"),
               _vaultItem(Icons.location_on_outlined, "SECURE ADDRESSES"),
               _vaultItem(Icons.verified_user_outlined, "CERTIFICATES & AUTHENTICITY"),
               _vaultItem(Icons.settings_outlined, "VAULT SETTINGS"),
               const SizedBox(height: 25),
-              _vaultItem(Icons.logout_rounded, "EXIT GALLERY", isLast: true),
+              _vaultItem(Icons.logout_rounded, "EXIT GALLERY", isLast: true), // Linked to Logout Use Case [cite: 18]
             ],
           ),
         ),

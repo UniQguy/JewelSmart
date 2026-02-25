@@ -13,8 +13,11 @@ class CategoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Filter the global mock list by category
-    final filteredProducts = mockProducts
+    // 1. FILTER LOGIC: Matches category field in Jewelry_Product Table
+    // Handles 'ALL EXHIBITS' case for the PageView in HomePage
+    final filteredProducts = categoryName.toUpperCase() == 'ALL EXHIBITS'
+        ? mockProducts
+        : mockProducts
         .where((p) => p.category == categoryName.toUpperCase())
         .toList();
 
@@ -23,12 +26,12 @@ class CategoryPage extends StatelessWidget {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // 1. HEADER
+          // HEADER
           _buildSliverHeader(context),
 
-          // 2. CONDITIONALLY RENDER GRID OR EMPTY STATE
+          // CONDITIONALLY RENDER GRID OR EMPTY STATE
           filteredProducts.isEmpty
-              ? SliverFillRemaining( // Fills the screen properly for empty states
+              ? SliverFillRemaining(
             hasScrollBody: false,
             child: _buildEmptyCollection(),
           )
@@ -53,8 +56,8 @@ class CategoryPage extends StatelessWidget {
                         scale: 0.9,
                         child: FadeInAnimation(
                           child: LuxuryProductCard(
-                            title: product.title,
-                            price: product.price,
+                            // FIXED: Passing full product object to fix card error
+                            product: product,
                             onTap: () => Navigator.pushNamed(
                               context,
                               AppRoutes.productDetail,
@@ -71,7 +74,7 @@ class CategoryPage extends StatelessWidget {
             ),
           ),
 
-          // 3. BOTTOM BUFFER
+          // BOTTOM BUFFER
           const SliverToBoxAdapter(
             child: SizedBox(height: 120),
           ),
@@ -93,8 +96,7 @@ class CategoryPage extends StatelessWidget {
                 color: luxuryGold.withOpacity(0.3),
                 letterSpacing: 8,
                 fontSize: 10,
-                fontWeight: FontWeight.w300
-            ),
+                fontWeight: FontWeight.w300),
           ),
         ],
       ),
@@ -106,7 +108,7 @@ class CategoryPage extends StatelessWidget {
       expandedHeight: 250,
       backgroundColor: Colors.black,
       elevation: 0,
-      pinned: true, // Keeps a small bar visible when scrolling
+      pinned: true,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
         onPressed: () => Navigator.pop(context),

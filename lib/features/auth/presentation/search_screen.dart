@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../../../core/router/app_routes.dart';
-import '../domain/product_model.dart'; // Using the real Product model
+import '../domain/product_model.dart';
 import 'widgets/luxury_product_card.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -19,9 +19,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
   String _selectedStone = 'All';
   String _selectedMetal = 'All';
   String _searchQuery = '';
+  // Procedure Sync: Added dynamic price threshold
+  double _maxPrice = 1000000.0;
 
   final List<String> stones = ['All', 'Emerald', 'Diamond', 'Ruby', 'Sapphire'];
-  final List<String> metals = ['All', '22K Gold', '18K Gold', 'Rose Gold', 'Silver'];
+  final List<String> metals = ['All', '22K', '18K', 'Silver'];
 
   @override
   void dispose() {
@@ -29,13 +31,18 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
-  // LOGIC: Filter products based on all three parameters [cite: 17, 33, 63]
+  // LOGIC: Filter products based on Data Dictionary and Price Calculation
   List<Product> _getFilteredProducts() {
     return mockProducts.where((product) {
       final matchesStone = _selectedStone == 'All' || product.stone.toUpperCase() == _selectedStone.toUpperCase();
-      final matchesMetal = _selectedMetal == 'All' || product.metal.toUpperCase() == _selectedMetal.toUpperCase();
+      final matchesMetal = _selectedMetal == 'All' || product.purity.toUpperCase() == _selectedMetal.toUpperCase();
       final matchesSearch = product.title.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesStone && matchesMetal && matchesSearch;
+
+      // Calculation Sync: Logic matches Billing Controller (Base + Making)
+      final double totalPrice = product.basePrice + product.makingCharges;
+      final matchesPrice = totalPrice <= _maxPrice;
+
+      return matchesStone && matchesMetal && matchesSearch && matchesPrice;
     }).toList();
   }
 
@@ -45,23 +52,42 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
 
     return Scaffold(
       backgroundColor: Colors.black,
-      // Liquid Background Sparkle
       body: Stack(
         children: [
           _buildAmbientGlow(),
-
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildLiquidSearchBar(context),
-
-                // 1. MATERIAL CURATION FILTERS
                 _buildFilterSection("STONES", stones, (val) => setState(() => _selectedStone = val), _selectedStone),
-                _buildFilterSection("METALS", metals, (val) => setState(() => _selectedMetal = val), _selectedMetal),
+                _buildFilterSection("PURITY", metals, (val) => setState(() => _selectedMetal = val), _selectedMetal),
+
+                // NEW: Price Threshold Slider Section
+                _buildSectionLabel("PRICE THRESHOLD"),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: luxuryGold,
+                      inactiveTrackColor: Colors.white10,
+                      thumbColor: luxuryGold,
+                      valueIndicatorColor: luxuryGold,
+                      valueIndicatorTextStyle: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                    ),
+                    child: Slider(
+                      value: _maxPrice,
+                      min: 10000,
+                      max: 1000000,
+                      divisions: 20,
+                      label: "UNDER \$${_maxPrice.toInt()}",
+                      onChanged: (val) => setState(() => _maxPrice = val),
+                    ),
+                  ),
+                ),
 
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(30, 40, 30, 15),
+                  padding: const EdgeInsets.fromLTRB(30, 20, 30, 15),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -73,7 +99,6 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                   ),
                 ),
 
-                // 2. DISCOVERY RESULTS WITH STAGGERED REVEAL
                 Expanded(
                     child: filteredResults.isEmpty
                         ? _buildNoResults()
@@ -87,19 +112,25 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     );
   }
 
+  Widget _buildSectionLabel(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(30, 25, 30, 12),
+      child: Text(title, style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 4)),
+    );
+  }
+
+  // Rest of the UI helper methods (AmbientGlow, SearchBar, FilterSection, ResultsGrid, NoResults) remain unchanged
+
   Widget _buildAmbientGlow() {
     return Positioned(
       bottom: -100,
       left: -50,
       child: Container(
-        width: 300,
-        height: 300,
+        width: 300, height: 300,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: luxuryGold.withOpacity(0.02),
-          boxShadow: [
-            BoxShadow(color: luxuryGold.withOpacity(0.05), blurRadius: 100, spreadRadius: 50)
-          ],
+          boxShadow: [BoxShadow(color: luxuryGold.withOpacity(0.05), blurRadius: 100, spreadRadius: 50)],
         ),
       ),
     );
@@ -119,8 +150,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
               borderRadius: BorderRadius.zero,
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
+                child: Container(
                   height: 55,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.03),
@@ -152,11 +182,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(30, 25, 30, 12),
-          child: Text(title,
-              style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 4)),
-        ),
+        _buildSectionLabel(title),
         SizedBox(
           height: 45,
           child: ListView.builder(
@@ -170,25 +196,15 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                 onTap: () => onSelect(options[index]),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutQuint,
                   margin: const EdgeInsets.only(right: 12),
                   padding: const EdgeInsets.symmetric(horizontal: 28),
                   decoration: BoxDecoration(
                     color: isSelected ? luxuryGold : Colors.white.withOpacity(0.02),
-                    border: Border.all(
-                      color: isSelected ? luxuryGold : Colors.white10,
-                      width: 0.8,
-                    ),
+                    border: Border.all(color: isSelected ? luxuryGold : Colors.white10),
                   ),
                   child: Center(
-                    child: Text(
-                      options[index].toUpperCase(),
-                      style: TextStyle(
-                        color: isSelected ? Colors.black : Colors.white60,
-                        fontSize: 9,
-                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.w300,
-                        letterSpacing: 3,
-                      ),
+                    child: Text(options[index].toUpperCase(),
+                      style: TextStyle(color: isSelected ? Colors.black : Colors.white60, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 3),
                     ),
                   ),
                 ),
@@ -202,15 +218,12 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
 
   Widget _buildResultsGrid(List<Product> products) {
     return AnimationLimiter(
-      key: ValueKey('$_selectedStone-$_selectedMetal-$_searchQuery'),
+      key: ValueKey('$_selectedStone-$_selectedMetal-$_searchQuery-$_maxPrice'),
       child: GridView.builder(
         padding: const EdgeInsets.fromLTRB(25, 10, 25, 40),
         physics: const BouncingScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.58,
-          crossAxisSpacing: 25,
-          mainAxisSpacing: 30,
+          crossAxisCount: 2, childAspectRatio: 0.58, crossAxisSpacing: 25, mainAxisSpacing: 30,
         ),
         itemCount: products.length,
         itemBuilder: (context, index) {
@@ -219,18 +232,10 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
             position: index,
             duration: const Duration(milliseconds: 800),
             columnCount: 2,
-            child: SlideAnimation(
-              verticalOffset: 50.0,
-              child: FadeInAnimation(
-                child: LuxuryProductCard(
-                  title: product.title,
-                  price: product.price,
-                  onTap: () => Navigator.pushNamed(
-                      context,
-                      AppRoutes.productDetail,
-                      arguments: product // Passing real object for Hero transitions
-                  ),
-                ),
+            child: FadeInAnimation(
+              child: LuxuryProductCard(
+                product: product,
+                onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: product),
               ),
             ),
           );
@@ -246,9 +251,8 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
         children: [
           Icon(Icons.diamond_outlined, color: luxuryGold.withOpacity(0.1), size: 50),
           const SizedBox(height: 20),
-          Text(
-            "THE COLLECTION IS STILL EVOLVING",
-            style: TextStyle(color: luxuryGold.withOpacity(0.3), letterSpacing: 8, fontSize: 10, fontWeight: FontWeight.w100),
+          Text("THE COLLECTION IS STILL EVOLVING",
+            style: TextStyle(color: luxuryGold.withOpacity(0.3), letterSpacing: 8, fontSize: 10),
           ),
         ],
       ),

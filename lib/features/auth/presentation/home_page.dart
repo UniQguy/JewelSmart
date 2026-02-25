@@ -97,7 +97,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           _buildPerspectiveHero(),
           const SizedBox(height: 40),
           _buildSectionLabel("CURATED COLLECTIONS"),
-          _buildDynamicCategoryBar(), // Restored with animations
+          _buildDynamicCategoryBar(),
           const SizedBox(height: 50),
           _buildSectionLabel("THE 2026 EXHIBIT"),
           _buildStaggeredGallery(),
@@ -107,7 +107,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // --- RESTORED CATEGORY BAR WITH COOL ANIMATION ---
   Widget _buildDynamicCategoryBar() {
     final categories = ["NECKLACES", "RINGS", "BRACELETS", "EARRINGS"];
     return SizedBox(
@@ -122,13 +121,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             return AnimationConfiguration.staggeredList(
               position: index,
               duration: const Duration(milliseconds: 800),
-              child: FlipAnimation( // The high-end flip effect
+              child: FlipAnimation(
                 curve: Curves.easeOutExpo,
                 child: ScaleAnimation(
                   scale: 0.5,
                   child: FadeInAnimation(
                     child: GestureDetector(
-                      // Navigation trigger re-enabled
                       onTap: () => Navigator.pushNamed(
                         context,
                         AppRoutes.category,
@@ -166,8 +164,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
     );
   }
-
-  // --- REMAINING UI COMPONENTS ---
 
   Widget _buildFloatingBottomNav() {
     return ClipRRect(
@@ -306,8 +302,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 verticalOffset: 50,
                 child: FadeInAnimation(
                   child: LuxuryProductCard(
-                    title: product.title,
-                    price: product.price,
+                    // FIXED: Now passing full product object to fix constructor error
+                    product: product,
                     onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: product),
                   ),
                 ),

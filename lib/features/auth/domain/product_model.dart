@@ -1,48 +1,63 @@
 class Product {
-  final String id;
-  final String title;
-  final String price;
-  final String category;
-  final String imagePath;
+  final int productId; // Primary key
+  final String title;  // Jewelry name [cite: 7]
+  final String category; // Gold/Silver/Diamond [cite: 7]
+  final String purity;   // 22K/18K [cite: 7]
+  final double weight;   // Weight in grams
+  final double basePrice; // Base price
+  final double makingCharges; // Making charges
+  final String imagePath; // Product image [cite: 7, 105]
   final String description;
-  final String metal;
   final String stone;
+  final String status; // Available/Sold [cite: 7]
 
   Product({
-    required this.id,
+    required this.productId,
     required this.title,
-    required this.price,
     required this.category,
     required this.imagePath,
     required this.description,
-    this.metal = "22K GOLD",
+    required this.basePrice,
+    required this.makingCharges,
+    required this.weight,
+    this.purity = "22K",
     this.stone = "EMERALD",
+    this.status = "Available",
   });
+
+  // Business Logic: Matches the Activity Diagram procedures [cite: 121, 122, 128]
+  // Calculates Price -> Applies GST -> Displays Final Amount
+  double get totalPayableAmount {
+    double subtotal = basePrice + makingCharges;
+    double gstAmount = subtotal * 0.03; // Standard 3% GST for jewelry [cite: 122]
+    return subtotal + gstAmount;
+  }
+
+  // Formatted string for UI display
+  String get formattedPrice => "\$${totalPayableAmount.toStringAsFixed(2)}";
 }
 
 final List<Product> mockProducts = [
   Product(
-    id: '1',
+    productId: 1, // [cite: 7]
     title: "EMERALD LEGACY",
-    price: "\$4,500",
-    category: "NECKLACES",
+    category: "NECKLACES", // [cite: 7]
     imagePath: 'assets/images/login_bg.jpg',
     description: "A masterpiece of timeless elegance. Hand-selected deep-sea emeralds encased in a 22K brushed gold frame.",
+    basePrice: 4200.0, // [cite: 7]
+    makingCharges: 300.0, // [cite: 7]
+    weight: 14.2, //
+    purity: "22K", // [cite: 7]
   ),
   Product(
-    id: '2',
+    productId: 2,
     title: "CELESTIAL RING",
-    price: "\$2,200",
     category: "RINGS",
     imagePath: 'assets/images/login_bg.jpg',
     description: "Inspired by the stars, this diamond-encrusted ring features a central sapphire of unparalleled clarity.",
-  ),
-  Product(
-    id: '3',
-    title: "AURORA BRACELET",
-    price: "\$3,800",
-    category: "BRACELETS",
-    imagePath: 'assets/images/login_bg.jpg',
-    description: "A liquid-gold flow that wraps around the wrist, featuring intermittent ruby accents.",
+    basePrice: 2000.0,
+    makingCharges: 200.0,
+    weight: 5.5,
+    purity: "18K",
   ),
 ];

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../domain/product_model.dart'; // REQUIRED: For the updated Product definition
 
 class LuxuryProductCard extends StatefulWidget {
-  final String title;
-  final String price;
+  // FIXED: Accepts the full Product object instead of individual strings
+  final Product product;
   final VoidCallback onTap;
 
   const LuxuryProductCard({
     super.key,
-    required this.title,
-    required this.price,
+    required this.product,
     required this.onTap
   });
 
@@ -28,7 +28,7 @@ class _LuxuryProductCardState extends State<LuxuryProductCard> {
       onTapCancel: () => setState(() => _isPressed = false),
       onTap: widget.onTap,
       child: AnimatedScale(
-        scale: _isPressed ? 0.95 : 1.0, // Physical "press" effect
+        scale: _isPressed ? 0.95 : 1.0,
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
         child: AnimatedContainer(
@@ -52,23 +52,21 @@ class _LuxuryProductCardState extends State<LuxuryProductCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. IMAGE WITH HERO TRANSITION
+              // 1. IMAGE WITH HERO TRANSITION (Using unique productId from table)
               Expanded(
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Hero(
-                      // Unique tag allows the detail page to catch this animation
-                      tag: 'product_image_${widget.title}',
+                      tag: 'product_image_${widget.product.productId}',
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                         child: Image.asset(
-                          'assets/images/login_bg.jpg',
+                          widget.product.imagePath, // Dynamic path from Dictionary
                           fit: BoxFit.cover,
                         ),
                       ),
                     ),
-                    // Glassmorphic overlay for image depth
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -92,19 +90,20 @@ class _LuxuryProductCardState extends State<LuxuryProductCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.title.toUpperCase(),
+                      widget.product.title.toUpperCase(),
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,
                           fontWeight: FontWeight.w300,
-                          letterSpacing: 3 // High-end tracking
+                          letterSpacing: 3
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
+                    // DISPLAY: Uses the Business Logic calculation for price
                     Text(
-                      widget.price,
+                      widget.product.formattedPrice,
                       style: TextStyle(
                           color: luxuryGold,
                           fontSize: 12,
