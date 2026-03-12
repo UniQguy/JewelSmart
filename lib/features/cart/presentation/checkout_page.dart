@@ -1,58 +1,63 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/router/app_routes.dart';
+import '../providers/cart_provider.dart';
 
-class CheckoutPage extends StatefulWidget {
+/// THE SECURITY PROTOCOL (CHECKOUT)
+/// Redefined as a high-caliber authentication and payment interface.
+class CheckoutPage extends ConsumerStatefulWidget {
   const CheckoutPage({super.key});
 
   @override
-  State<CheckoutPage> createState() => _CheckoutPageState();
+  ConsumerState<CheckoutPage> createState() => _CheckoutPageState();
 }
 
-class _CheckoutPageState extends State<CheckoutPage> {
+class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   final Color luxuryGold = const Color(0xFFD4AF37);
   bool _isProcessing = false;
 
   void _handlePayment() async {
     setState(() => _isProcessing = true);
 
-    // Simulating Payment Gateway processing [cite: 69]
+    // World-Class Security Simulation: Bio-metric & Gateway check
     await Future.delayed(const Duration(seconds: 4));
 
     if (mounted) {
-      // Navigates to Success Page which triggers "Generate Invoice" [cite: 68]
+      // Transition to Success Page triggers the final Root Document update
       Navigator.pushReplacementNamed(context, AppRoutes.success);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final totalAmount = ref.watch(cartTotalProvider);
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. DYNAMIC SECURITY OVERLAY
           _buildSecurityBackground(),
-
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
+              padding: const EdgeInsets.symmetric(horizontal: 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 40),
-                  _buildHeader(),
+                  _buildBackButton(),
+                  const SizedBox(height: 60),
+                  _buildBrandHeroText(),
+                  const SizedBox(height: 80),
+                  _buildSummaryLedger(totalAmount),
                   const Spacer(),
-                  _buildPaymentSummary(),
-                  const SizedBox(height: 50),
-                  _buildActionButton(),
-                  const SizedBox(height: 50),
+                  _buildSecureAction(),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
           ),
-
           if (_isProcessing) _buildProcessingOverlay(),
         ],
       ),
@@ -61,100 +66,108 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _buildSecurityBackground() {
     return Positioned.fill(
-      child: Opacity(
-        opacity: 0.1,
-        child: Image.asset('assets/images/login_bg.jpg', fit: BoxFit.cover)
-            .animate(onPlay: (c) => c.repeat())
-            .shimmer(duration: 3.seconds, color: luxuryGold),
-      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.5,
+            colors: [
+              luxuryGold.withValues(alpha: 0.05),
+              Colors.black,
+            ],
+          ),
+        ),
+      ).animate(onPlay: (c) => c.repeat(reverse: true))
+          .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 10.seconds),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildBackButton() {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
+      onPressed: () => Navigator.pop(context),
+    );
+  }
+
+  Widget _buildBrandHeroText() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
-          onPressed: () => Navigator.pop(context),
-        ),
-        const SizedBox(height: 30),
-        Text("SECURE\nACQUISITION", // International brand terminology
-            style: TextStyle(color: luxuryGold, fontSize: 42, fontWeight: FontWeight.w100, height: 1.0, letterSpacing: -2)),
+        const Text("SECURITY PROTOCOL",
+            style: TextStyle(color: Colors.white24, fontSize: 9, letterSpacing: 6, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 15),
+        Text("FINALIZE THE\nACQUISITION",
+            style: TextStyle(color: luxuryGold, fontSize: 44, fontWeight: FontWeight.w100, height: 1.0, letterSpacing: -2)),
       ],
-    );
+    ).animate().fadeIn(duration: 800.ms);
   }
 
-  Widget _buildPaymentSummary() {
-    return Container(
-      padding: const EdgeInsets.all(30),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        children: [
-          _summaryRow("ESTATE TOTAL", "\$12,500"),
-          const SizedBox(height: 15),
-          _summaryRow("INSURANCE & TAX", "\$1,250"), // Reflects "Calculate Price" logic [cite: 52]
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Divider(color: Colors.white10),
-          ),
-          _summaryRow("FINAL AMOUNT", "\$13,750", isTotal: true),
-        ],
-      ),
-    ).animate().fadeIn().slideY(begin: 0.2);
+  Widget _buildSummaryLedger(double total) {
+    return Column(
+      children: [
+        _ledgerRow("ACQUISITION VALUE", "\$${total.toStringAsFixed(2)}"),
+        const SizedBox(height: 20),
+        _ledgerRow("SECURITY & INSURANCE", "INCLUDED"),
+        const SizedBox(height: 20),
+        _ledgerRow("BOUTIQUE DELIVERY", "INCLUDED"),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 30),
+          child: Divider(color: Colors.white10),
+        ),
+        _ledgerRow("TOTAL SECURED", "\$${total.toStringAsFixed(2)}", isGold: true),
+      ],
+    ).animate().fadeIn(delay: 400.ms);
   }
 
-  Widget _summaryRow(String label, String value, {bool isTotal = false}) {
+  Widget _ledgerRow(String label, String value, {bool isGold = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 3)),
+        Text(label, style: const TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 4)),
         Text(value, style: TextStyle(
-            color: isTotal ? luxuryGold : Colors.white,
-            fontSize: isTotal ? 24 : 14,
-            fontWeight: isTotal ? FontWeight.w100 : FontWeight.bold
+            color: isGold ? luxuryGold : Colors.white70,
+            fontSize: isGold ? 22 : 12,
+            fontWeight: isGold ? FontWeight.w100 : FontWeight.w300,
+            letterSpacing: 1
         )),
       ],
     );
   }
 
-  Widget _buildActionButton() {
+  Widget _buildSecureAction() {
     return GestureDetector(
       onTap: _handlePayment,
       child: Container(
         width: double.infinity,
         height: 70,
-        decoration: BoxDecoration(
-          color: luxuryGold,
-          boxShadow: [BoxShadow(color: luxuryGold.withOpacity(0.2), blurRadius: 40)],
-        ),
+        color: luxuryGold,
         child: const Center(
           child: Text("AUTHENTICATE & PURCHASE",
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 4, fontSize: 11)),
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 11)),
         ),
       ),
-    );
+    ).animate().fadeIn(delay: 600.ms);
   }
 
   Widget _buildProcessingOverlay() {
-    return Container(
-      color: Colors.black.withOpacity(0.9),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 100,
-              height: 100,
-              child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1),
-            ).animate(onPlay: (c) => c.repeat()).rotate(duration: 2.seconds),
-            const SizedBox(height: 40),
-            Text("CONNECTING TO BANKING VAULT...",
-                style: TextStyle(color: luxuryGold, fontSize: 9, letterSpacing: 5, fontWeight: FontWeight.w300)),
-          ],
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.9),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1),
+              ).animate(onPlay: (c) => c.repeat()).rotate(duration: 4.seconds),
+              const SizedBox(height: 40),
+              const Text("VERIFYING SECURE PAYMENT GATEWAY",
+                  style: TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 5, fontWeight: FontWeight.w900)),
+            ],
+          ),
         ),
       ),
     );

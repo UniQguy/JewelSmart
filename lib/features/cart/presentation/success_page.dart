@@ -1,12 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/router/app_routes.dart';
 import '../providers/cart_provider.dart';
 import '../providers/inventory_provider.dart';
-// REQUIRED: Resolves property access for CartItem and Product
 import '../../auth/domain/product_model.dart';
 
+/// THE LEGACY CONFIRMATION (SUCCESS)
+/// Redefined as a premium unboxing experience with atomic inventory finalization.
 class SuccessPage extends ConsumerStatefulWidget {
   const SuccessPage({super.key});
 
@@ -14,58 +16,31 @@ class SuccessPage extends ConsumerStatefulWidget {
   ConsumerState<SuccessPage> createState() => _SuccessPageState();
 }
 
-class _SuccessPageState extends ConsumerState<SuccessPage> with SingleTickerProviderStateMixin {
+class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderStateMixin {
   final Color luxuryGold = const Color(0xFFD4AF37);
-  late AnimationController _controller;
-  late Animation<double> _checkmarkAnimation;
-  late Animation<double> _contentFade;
 
   @override
   void initState() {
     super.initState();
-
+    // Logic Sync: Finalize the acquisition as soon as the vault opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _finalizeAcquisition();
     });
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    );
-
-    _checkmarkAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
-    );
-
-    _contentFade = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.6, 1.0, curve: Curves.easeIn),
-    );
-
-    _controller.forward();
   }
 
-  // Procedure Sync: Fulfills the "Update Stock" and "Clear Cart" Sequence steps
   void _finalizeAcquisition() {
     final cartItems = ref.read(cartProvider);
 
+    // Atomic Inventory Update
     for (var item in cartItems) {
-      // Logic Sync: item is now a CartItem, providing access to .product and .quantity
       ref.read(inventoryProvider.notifier).stockOut(
           item.product.productId,
           item.quantity
       );
     }
 
-    // FIXED: Must use the notifier's clearCart() method for StateNotifierProvider
+    // Clear the Vault for future acquisitions
     ref.read(cartProvider.notifier).clearCart();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 
   @override
@@ -74,78 +49,18 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with SingleTickerProv
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Image.asset('assets/images/login_bg.jpg', fit: BoxFit.cover),
-          ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-              child: Container(color: Colors.black.withOpacity(0.6)),
-            ),
-          ),
-
+          _buildCinematicBackground(),
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ScaleTransition(
-                  scale: _checkmarkAnimation,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: luxuryGold, width: 3),
-                      boxShadow: [BoxShadow(color: luxuryGold.withOpacity(0.5), blurRadius: 30)],
-                    ),
-                    child: Icon(Icons.check_rounded, color: luxuryGold, size: 60),
-                  ),
-                ),
+                _buildAnimatedVaultIcon(),
                 const SizedBox(height: 40),
-                FadeTransition(
-                  opacity: _contentFade,
-                  child: Column(
-                    children: [
-                      const Text("ACQUISITION COMPLETE",
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: 6)),
-                      const SizedBox(height: 10),
-                      Text("Your legacy has been secured in our vault.",
-                          style: TextStyle(color: luxuryGold.withOpacity(0.8), fontSize: 12, letterSpacing: 2)),
-                      const SizedBox(height: 60),
-                      Container(
-                        width: MediaQuery.of(context).size.width * 0.8,
-                        padding: const EdgeInsets.all(25),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white10),
-                        ),
-                        child: Column(
-                          children: [
-                            _detailRow("Transaction ID", "#TXN-99421"),
-                            const Divider(color: Colors.white10, height: 30),
-                            _detailRow("Status", "SUCCESSFUL"),
-                            const Divider(color: Colors.white10, height: 30),
-                            _detailRow("Mode", "UPI / DIGITAL"),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 50),
-                      GestureDetector(
-                        onTap: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: luxuryGold),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Text("RETURN TO GALLERY",
-                              style: TextStyle(color: luxuryGold, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _buildSuccessMessage(),
+                const SizedBox(height: 60),
+                _buildAcquisitionSummary(),
+                const SizedBox(height: 80),
+                _buildReturnAction(),
               ],
             ),
           ),
@@ -154,13 +69,91 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with SingleTickerProv
     );
   }
 
-  Widget _detailRow(String label, String value) {
+  Widget _buildCinematicBackground() {
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.2,
+            colors: [
+              luxuryGold.withValues(alpha: 0.08),
+              Colors.black,
+            ],
+          ),
+        ),
+      ).animate().fadeIn(duration: 2.seconds),
+    );
+  }
+
+  Widget _buildAnimatedVaultIcon() {
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: luxuryGold, width: 1),
+      ),
+      child: Icon(Icons.check, color: luxuryGold, size: 50),
+    ).animate()
+        .scale(duration: 800.ms, curve: Curves.elasticOut)
+        .shimmer(delay: 1.seconds, duration: 2.seconds, color: Colors.white24);
+  }
+
+  Widget _buildSuccessMessage() {
+    return Column(
+      children: [
+        const Text("ACQUISITION SECURED",
+            style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 8, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 15),
+        Text("WELCOME TO\nTHE LEGACY",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: luxuryGold, fontSize: 40, fontWeight: FontWeight.w100, height: 1.0, letterSpacing: -2)),
+      ],
+    ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2);
+  }
+
+  Widget _buildAcquisitionSummary() {
+    return Container(
+      width: 300,
+      padding: const EdgeInsets.all(30),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.02),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        children: [
+          _summaryRow("STATUS", "AUTHENTICATED"),
+          const SizedBox(height: 15),
+          _summaryRow("VAULT ID", "JS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}"),
+          const SizedBox(height: 15),
+          _summaryRow("LOGISTICS", "PRIVATE COURIER"),
+        ],
+      ),
+    ).animate().fadeIn(delay: 800.ms);
+  }
+
+  Widget _summaryRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10, letterSpacing: 1)),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 4)),
+        Text(value, style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
       ],
     );
+  }
+
+  Widget _buildReturnAction() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+        decoration: BoxDecoration(
+          border: Border.all(color: luxuryGold.withValues(alpha: 0.5)),
+        ),
+        child: Text("RETURN TO GALLERY",
+            style: TextStyle(color: luxuryGold, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 4)),
+      ),
+    ).animate().fadeIn(delay: 1200.ms);
   }
 }

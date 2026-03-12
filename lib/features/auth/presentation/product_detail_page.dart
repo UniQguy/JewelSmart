@@ -1,9 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../domain/product_model.dart';
 
+/// THE EDITORIAL PRODUCT VIEW
+/// Redefined with immersive parallax imagery and premium boutique interactions.
 class ProductDetailPage extends ConsumerWidget {
   const ProductDetailPage({super.key});
 
@@ -11,10 +14,12 @@ class ProductDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Safety check for arguments passed via GoRouter/Navigator
     final product = ModalRoute.of(context)!.settings.arguments as Product;
 
     return Scaffold(
       backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       body: Stack(
         children: [
           CustomScrollView(
@@ -23,15 +28,19 @@ class ProductDetailPage extends ConsumerWidget {
               _buildParallaxHeader(context, product),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 35),
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _buildBrandHeader(product),
+                      const SizedBox(height: 10),
                       _buildEditorialTitle(product),
                       const SizedBox(height: 40),
-                      _buildDescriptionSection(product),
+                      _buildPriceSection(product),
                       const SizedBox(height: 40),
-                      _buildSpecifications(product),
+                      _buildDescriptionSection(product),
+                      const SizedBox(height: 50),
+                      _buildBoutiqueSpecifications(product),
                       const SizedBox(height: 150),
                     ],
                   ),
@@ -39,13 +48,8 @@ class ProductDetailPage extends ConsumerWidget {
               ),
             ],
           ),
-
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildGlassActionBtn(context, ref, product),
-          ),
+          _buildBackAction(context),
+          _buildBottomAcquisitionBar(context, ref, product),
         ],
       ),
     );
@@ -53,144 +57,185 @@ class ProductDetailPage extends ConsumerWidget {
 
   Widget _buildParallaxHeader(BuildContext context, Product product) {
     return SliverAppBar(
-      expandedHeight: MediaQuery.of(context).size.height * 0.65,
+      expandedHeight: MediaQuery.of(context).size.height * 0.6,
+      automaticallyImplyLeading: false,
       backgroundColor: Colors.black,
-      elevation: 0,
-      leading: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: CircleAvatar(
-          backgroundColor: Colors.black.withOpacity(0.4),
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
-            onPressed: () => Navigator.pop(context),
+      flexibleSpace: FlexibleSpaceBar(
+        background: Hero(
+          tag: 'product_${product.productId}',
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset(
+                product.imagePath,
+                fit: BoxFit.cover,
+              ).animate().scale(
+                duration: 20.seconds,
+                begin: const Offset(1.0, 1.0),
+                end: const Offset(1.2, 1.2),
+              ),
+              // High-fashion gradient overlay for text readability
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.4),
+                      Colors.transparent,
+                      Colors.black,
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            Hero(
-              tag: 'product_image_${product.productId}',
-              child: Image.asset(product.imagePath, fit: BoxFit.cover),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.4),
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.9),
-                    Colors.black,
+    );
+  }
+
+  Widget _buildBrandHeader(Product product) {
+    return const Text(
+      "PRIVATE COLLECTION • 2026",
+      style: TextStyle(
+        color: Colors.white24,
+        fontSize: 8,
+        letterSpacing: 5,
+        fontWeight: FontWeight.w900,
+      ),
+    ).animate().fadeIn(delay: 200.ms);
+  }
+
+  Widget _buildEditorialTitle(Product product) {
+    return Text(
+      product.title.toUpperCase(),
+      style: TextStyle(
+        color: luxuryGold,
+        fontSize: 34,
+        fontWeight: FontWeight.w100,
+        letterSpacing: -1,
+        height: 1.0,
+      ),
+    ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1);
+  }
+
+  Widget _buildPriceSection(Product product) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "\$${product.totalPayableAmount.toStringAsFixed(2)}",
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.w200,
+            letterSpacing: 2,
+          ),
+        ),
+        const Text(
+          "INCLUDES 3% GST & HANDCRAFTING CHARGES",
+          style: TextStyle(color: Colors.white12, fontSize: 8, letterSpacing: 2),
+        ),
+      ],
+    ).animate().fadeIn(delay: 600.ms);
+  }
+
+  Widget _buildBoutiqueSpecifications(Product product) {
+    return Column(
+      children: [
+        _specRow("PURITY", "${product.purity}K FINE GOLD"),
+        const Divider(color: Colors.white10),
+        _specRow("WEIGHT", "${product.weight}G"),
+        const Divider(color: Colors.white10),
+        _specRow("MAKING", "\$${product.makingCharges}"),
+      ],
+    ).animate().fadeIn(delay: 800.ms);
+  }
+
+  Widget _specRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 15),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white24, fontSize: 9, letterSpacing: 3)),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomAcquisitionBar(BuildContext context, WidgetRef ref, Product product) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.all(30),
+            color: Colors.black.withValues(alpha: 0.8),
+            child: GestureDetector(
+              onTap: () {
+                ref.read(cartProvider.notifier).addItem(product);
+                _showSuccessNotification(context);
+              },
+              child: Container(
+                height: 70,
+                decoration: BoxDecoration(
+                  color: luxuryGold,
+                  boxShadow: [
+                    BoxShadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 40)
                   ],
+                ),
+                child: const Center(
+                  child: Text("ACQUIRE PIECE",
+                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 6, fontSize: 11)),
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    ).animate().slideY(begin: 1.0, duration: 800.ms, curve: Curves.easeOutQuart);
+  }
+
+  void _showSuccessNotification(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.white,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(30),
+        duration: const Duration(seconds: 2),
+        content: Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: luxuryGold, size: 18),
+            const SizedBox(width: 15),
+            const Text("PIECE SECURED IN BAG",
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 9)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEditorialTitle(Product product) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("COLLECTION 2026",
-            style: TextStyle(color: Colors.white38, fontSize: 10, letterSpacing: 5, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 15),
-        Text(product.title.replaceAll(' ', '\n'),
-            style: TextStyle(color: luxuryGold, fontSize: 38, fontWeight: FontWeight.w100, height: 1.0, letterSpacing: -1)),
-        const SizedBox(height: 15),
-        Text(product.formattedPrice,
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 1)),
-      ],
+  Widget _buildBackAction(BuildContext context) {
+    return Positioned(
+      top: 50,
+      left: 20,
+      child: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
+        onPressed: () => Navigator.pop(context),
+      ),
     );
   }
 
   Widget _buildDescriptionSection(Product product) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("THE ARTISTRY",
-            style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 15),
-        Text(
-          product.description,
-          style: const TextStyle(color: Colors.white60, fontSize: 14, height: 1.8, fontWeight: FontWeight.w300),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSpecifications(Product product) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _specItem("METAL", product.purity),
-        _specItem("STONE", product.stone),
-        _specItem("WEIGHT", "${product.weight}G"),
-      ],
-    );
-  }
-
-  Widget _specItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 2)),
-        const SizedBox(height: 5),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
-  Widget _buildGlassActionBtn(BuildContext context, WidgetRef ref, Product product) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(25, 20, 25, 45),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.7),
-            border: const Border(top: BorderSide(color: Colors.white10)),
-          ),
-          child: GestureDetector(
-            onTap: () {
-              // FIXED: Now uses the specialized addItem method from CartNotifier
-              // This fixes the 'update' isn't defined error
-              ref.read(cartProvider.notifier).addItem(product);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: luxuryGold,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                  content: const Text("ITEM SECURED IN BAG",
-                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 10)),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
-            child: Container(
-              height: 60,
-              decoration: BoxDecoration(
-                color: luxuryGold,
-                borderRadius: BorderRadius.circular(4),
-                boxShadow: [
-                  BoxShadow(color: luxuryGold.withOpacity(0.2), blurRadius: 20, spreadRadius: 2)
-                ],
-              ),
-              child: const Center(
-                child: Text("ACQUIRE PIECE",
-                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 4, fontSize: 12)),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    return const Text(
+      "A masterpiece of artisanal precision, this piece represents the pinnacle of the 2026 legacy collection. Each facet is hand-finished to ensure a reflection of absolute purity.",
+      style: TextStyle(color: Colors.white60, fontSize: 12, height: 1.8, letterSpacing: 0.5, fontWeight: FontWeight.w300),
+    ).animate().fadeIn(delay: 700.ms);
   }
 }

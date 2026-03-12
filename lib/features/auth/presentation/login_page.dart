@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/router/app_routes.dart';
 import '../data/auth_service.dart';
 
+/// THE PRIVATE VAULT ENTRANCE
+/// Redefined with a global luxury aesthetic and editorial UI patterns.
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -24,6 +26,8 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      // Extends behind the status bar for a seamless "edge-to-edge" look
+      extendBodyBehindAppBar: true,
       body: Stack(
         children: [
           _buildCinematicBackground(),
@@ -35,7 +39,7 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 100),
+                  const SizedBox(height: 80),
                   _buildBrandHeroText(),
                   const SizedBox(height: 80),
                   _buildEditorialField("MEMBER IDENTIFICATION", Icons.alternate_email_rounded, _emailController),
@@ -52,6 +56,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
+          // High-Performance cinematic loader
           if (_isLoading) _buildGlobalLoader(),
         ],
       ),
@@ -64,23 +69,27 @@ class _LoginPageState extends State<LoginPage> {
         'assets/images/login_bg.jpg',
         fit: BoxFit.cover,
       ).animate(onPlay: (c) => c.repeat())
-          .scale(begin: const Offset(1.1, 1.1), end: const Offset(1.2, 1.2), duration: 20.seconds, curve: Curves.easeInOut)
-          .shimmer(delay: 2.seconds, duration: 4.seconds, color: luxuryGold.withOpacity(0.1)),
+          .scale(
+          begin: const Offset(1.1, 1.1),
+          end: const Offset(1.3, 1.3),
+          duration: 30.seconds,
+          curve: Curves.easeInOut
+      ),
     );
   }
 
   Widget _buildGlassOverlay() {
     return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+      filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40), // Deeper blur for premium feel
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Colors.black.withOpacity(0.8),
-              Colors.black.withOpacity(0.4),
-              Colors.black.withOpacity(0.9),
+              Colors.black.withValues(alpha: 0.3),
+              Colors.black.withValues(alpha: 0.7),
+              Colors.black,
             ],
           ),
         ),
@@ -92,12 +101,22 @@ class _LoginPageState extends State<LoginPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("ESTABLISHED 2026",
-            style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 5, fontWeight: FontWeight.bold)),
+        const Text("ESTABLISHED • 2026",
+            style: TextStyle(
+                color: Colors.white24,
+                fontSize: 9,
+                letterSpacing: 6,
+                fontWeight: FontWeight.bold
+            )).animate().fadeIn(delay: 200.ms),
         const SizedBox(height: 15),
         Text("ENTER THE\nPRIVATE VAULT",
-            style: TextStyle(color: luxuryGold, fontSize: 52, fontWeight: FontWeight.w100, height: 0.9, letterSpacing: -3))
-            .animate().fadeIn(duration: 1200.ms).slideX(begin: -0.2),
+            style: TextStyle(
+                color: luxuryGold,
+                fontSize: 50,
+                fontWeight: FontWeight.w100,
+                height: 0.9,
+                letterSpacing: -2
+            )).animate().fadeIn(duration: 1200.ms).slideX(begin: -0.1),
       ],
     );
   }
@@ -114,7 +133,7 @@ class _LoginPageState extends State<LoginPage> {
           style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 1, fontWeight: FontWeight.w200),
           cursorColor: luxuryGold,
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: luxuryGold.withOpacity(0.4), size: 18),
+            prefixIcon: Icon(icon, color: luxuryGold.withValues(alpha: 0.4), size: 18),
             suffixIcon: isPass ? IconButton(
               icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.white10, size: 16),
               onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
@@ -131,72 +150,76 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildPrimaryAction() {
     return GestureDetector(
       onTap: () async {
+        if (_emailController.text.isEmpty || _passController.text.isEmpty) return;
+
         setState(() => _isLoading = true);
         final user = await _authService.signInWithEmail(_emailController.text, _passController.text);
 
-        // Note: AuthWrapper handles navigation automatically
         if (user == null) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("VAULT ACCESS DENIED")));
+          // Show specifically why it failed using our new AuthService logic
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  backgroundColor: Colors.red.withValues(alpha: 0.8),
+                  content: Text(_authService.errorMessage,
+                      style: const TextStyle(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold))
+              )
+          );
         }
+        // If successful, AuthWrapper will automatically transition
       },
       child: Container(
         width: double.infinity,
         height: 70,
         decoration: BoxDecoration(
           color: luxuryGold,
-          boxShadow: [BoxShadow(color: luxuryGold.withOpacity(0.3), blurRadius: 40, spreadRadius: 5)],
+          boxShadow: [
+            BoxShadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 40, offset: const Offset(0, 10))
+          ],
         ),
         child: const Center(
           child: Text("AUTHENTICATE ACCESS",
               style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 11)),
         ),
       ),
-    ).animate().fadeIn(delay: 600.ms).scale(begin: const Offset(0.9, 0.9));
+    ).animate().fadeIn(delay: 400.ms);
   }
 
   Widget _buildSocialDiscovery() {
     return Center(
       child: Column(
         children: [
-          const Text("OR DISCOVER VIA", style: TextStyle(color: Colors.white12, fontSize: 9, letterSpacing: 4)),
+          const Text("OR DISCOVER VIA",
+              style: TextStyle(color: Colors.white12, fontSize: 8, letterSpacing: 5)),
           const SizedBox(height: 25),
           GestureDetector(
             onTap: () async {
-              setState(() => _isLoading = true); // Triggers cinematic loader
+              setState(() => _isLoading = true);
               final user = await _authService.signInWithGoogle();
-
-              // AuthWrapper handles redirection once the Firestore sync is complete
               if (user == null) {
                 setState(() => _isLoading = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("GOOGLE AUTHENTICATION CANCELED")));
               }
             },
-            child: ClipRRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.02),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset('assets/images/google_icon.png', width: 20),
-                      const SizedBox(width: 20),
-                      const Text("GOOGLE IDENTITY", style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.02),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset('assets/images/google_icon.png', width: 18),
+                  const SizedBox(width: 20),
+                  const Text("GOOGLE IDENTITY",
+                      style: TextStyle(color: Colors.white70, fontSize: 9, letterSpacing: 3, fontWeight: FontWeight.bold)),
+                ],
               ),
             ),
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 800.ms);
+    ).animate().fadeIn(delay: 600.ms);
   }
 
   Widget _buildBottomNavigation() {
@@ -208,7 +231,8 @@ class _LoginPageState extends State<LoginPage> {
             text: "NOT A MEMBER? ",
             style: const TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 3),
             children: [
-              TextSpan(text: "JOIN THE LEGACY", style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900)),
+              TextSpan(text: "JOIN THE LEGACY",
+                  style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900)),
             ],
           ),
         ),
@@ -217,12 +241,21 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildGlobalLoader() {
-    return Container(
-      color: Colors.black.withOpacity(0.9),
-      child: Center(
-        child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1)
-            .animate(onPlay: (c) => c.repeat())
-            .scale(duration: 1.seconds, begin: const Offset(1, 1), end: const Offset(1.5, 1.5)),
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.8),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: luxuryGold, strokeWidth: 1),
+              const SizedBox(height: 20),
+              const Text("VERIFYING IDENTITY",
+                  style: TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 5)),
+            ],
+          ).animate().scale(duration: 400.ms, curve: Curves.easeOut),
+        ),
       ),
     );
   }

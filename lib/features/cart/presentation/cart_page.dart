@@ -2,10 +2,13 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/cart_provider.dart';
 import '../../../core/router/app_routes.dart';
-import '../../auth/domain/product_model.dart'; // REQUIRED for Data Dictionary alignment
+import '../../auth/domain/product_model.dart';
 
+/// THE PRIVATE VAULT (CART)
+/// Redefined as a minimalist editorial ledger with premium glassmorphism.
 class CartPage extends ConsumerWidget {
   const CartPage({super.key});
 
@@ -13,8 +16,8 @@ class CartPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. SYSTEM CHECK: Listening to the state of CartItem list
     final cartItems = ref.watch(cartProvider);
+    final totalAmount = ref.watch(cartTotalProvider);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -25,30 +28,25 @@ class CartPage extends ConsumerWidget {
         children: [
           AnimationLimiter(
             child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(25, 20, 25, 250),
+              padding: const EdgeInsets.fromLTRB(30, 20, 30, 280),
               physics: const BouncingScrollPhysics(),
               itemCount: cartItems.length,
-              // FIX: cartItems[index] is now a CartItem
-              itemBuilder: (context, index) => AnimationConfiguration.staggeredList(
-                position: index,
-                duration: const Duration(milliseconds: 600),
-                child: SlideAnimation(
-                  horizontalOffset: 50.0,
-                  child: FadeInAnimation(
-                    child: _buildVaultItem(ref, cartItems[index], index),
+              itemBuilder: (context, index) {
+                final item = cartItems[index];
+                return AnimationConfiguration.staggeredList(
+                  position: index,
+                  duration: const Duration(milliseconds: 600),
+                  child: SlideAnimation(
+                    verticalOffset: 30.0,
+                    child: FadeInAnimation(
+                      child: _buildVaultItem(context, ref, item),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
-
-          // 2. BILLING CONTROLLER: Displays Final Amount & Tax
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildGlassCheckoutBar(context, ref),
-          ),
+          _buildBoutiqueCheckoutPanel(context, totalAmount),
         ],
       ),
     );
@@ -59,110 +57,102 @@ class CartPage extends ConsumerWidget {
       backgroundColor: Colors.black,
       elevation: 0,
       centerTitle: true,
-      title: const Text('THE VAULT',
-          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w300, letterSpacing: 8)),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: const Text("THE VAULT",
+          style: TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 8, fontWeight: FontWeight.w200)),
     );
   }
 
-  // FIX: parameter type changed to CartItem to resolve type mismatch
-  Widget _buildVaultItem(WidgetRef ref, CartItem cartItem, int index) {
-    final product = cartItem.product;
-
+  Widget _buildVaultItem(BuildContext context, WidgetRef ref, dynamic item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 25),
-      height: 140,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02), // Updated from withOpacity
-        border: Border.all(color: Colors.white10),
+        color: Colors.white.withValues(alpha: 0.02),
+        border: Border.all(color: Colors.white10, width: 0.5),
       ),
       child: Row(
         children: [
+          // High-Resolution Preview
           Container(
-            width: 120,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(product.imagePath),
-                fit: BoxFit.cover,
-              ),
+            width: 80,
+            height: 80,
+            color: Colors.white.withValues(alpha: 0.05),
+            child: Image.asset(item.product.imagePath, fit: BoxFit.cover),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.product.title.toUpperCase(),
+                    style: const TextStyle(color: Colors.white, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 5),
+                Text("\$${item.product.totalPayableAmount.toStringAsFixed(2)}",
+                    style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 1)),
+              ],
             ),
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(product.title.toUpperCase(),
-                      style: TextStyle(color: luxuryGold, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 2)),
-                  const SizedBox(height: 5),
-                  // Metadata from Jewelry_Product Table
-                  Text("${product.purity} ${product.category} • ${product.weight}G",
-                      style: const TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 1)),
-                  const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Displays quantity and price
-                      Text("${cartItem.quantity}x ${product.formattedPrice}",
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w100)),
-                      GestureDetector(
-                        onTap: () {
-                          // FIX: Uses dedicated removeItem method
-                          ref.read(cartProvider.notifier).removeItem(product.productId);
-                        },
-                        child: const Text("REMOVE",
-                            style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 2, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ],
+          // Quantity Controls
+          Row(
+            children: [
+              _quantityAction(Icons.remove, () => ref.read(cartProvider.notifier).decrementQuantity(item.product.productId)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text("${item.quantity}",
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w200)),
               ),
-            ),
+              _quantityAction(Icons.add, () => ref.read(cartProvider.notifier).addItem(item.product)),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGlassCheckoutBar(BuildContext context, WidgetRef ref) {
-    // Logic Sync: Uses the automated providers for total calculations
-    final totalAmount = ref.watch(cartTotalProvider);
-    final items = ref.watch(cartProvider);
+  Widget _quantityAction(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(border: Border.all(color: Colors.white10)),
+        child: Icon(icon, color: Colors.white38, size: 12),
+      ),
+    );
+  }
 
-    // Calculate raw subtotal without GST (based on your 3% model)
-    double subtotal = items.fold(0, (sum, item) =>
-    sum + ((item.product.basePrice + item.product.makingCharges) * item.quantity));
-
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(30, 25, 30, 50),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.8),
-            border: const Border(top: BorderSide(color: Colors.white10)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _priceRow("SUBTOTAL", "\$${subtotal.toStringAsFixed(2)}", isSmall: true),
-              const SizedBox(height: 10),
-              _priceRow("GST (3%)", "\$${(totalAmount - subtotal).toStringAsFixed(2)}", isSmall: true),
-              const SizedBox(height: 15),
-              _priceRow("TOTAL PAYABLE", "\$${totalAmount.toStringAsFixed(2)}", isSmall: false),
-              const SizedBox(height: 25),
-              GestureDetector(
-                onTap: () => Navigator.pushNamed(context, AppRoutes.success),
-                child: Container(
-                  width: double.infinity, height: 60,
-                  color: luxuryGold,
-                  child: const Center(
-                    child: Text("ACQUIRE PIECES",
-                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 3, fontSize: 10)),
-                  ),
+  Widget _buildBoutiqueCheckoutPanel(BuildContext context, double total) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.all(35),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.8),
+              border: const Border(top: BorderSide(color: Colors.white10, width: 0.5)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _priceRow("SUBTOTAL", "\$${total.toStringAsFixed(2)}", isSmall: true),
+                const SizedBox(height: 10),
+                _priceRow("ESTIMATED TAX", "\$${(total * 0.03).toStringAsFixed(2)}", isSmall: true),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Divider(color: Colors.white10),
                 ),
-              ),
-            ],
+                _priceRow("TOTAL ACQUISITION", "\$${(total * 1.03).toStringAsFixed(2)}", isSmall: false),
+                const SizedBox(height: 35),
+                _buildSecureAction(context),
+              ],
+            ),
           ),
         ),
       ),
@@ -173,10 +163,30 @@ class CartPage extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: isSmall ? Colors.white38 : Colors.white60, fontSize: 9, letterSpacing: 4)),
-        Text(value, style: TextStyle(color: Colors.white, fontSize: isSmall ? 14 : 24, fontWeight: isSmall ? FontWeight.w300 : FontWeight.w100)),
+        Text(label, style: TextStyle(color: isSmall ? Colors.white24 : Colors.white60, fontSize: 8, letterSpacing: 4)),
+        Text(value, style: TextStyle(
+            color: isSmall ? Colors.white70 : luxuryGold,
+            fontSize: isSmall ? 12 : 22,
+            fontWeight: isSmall ? FontWeight.w300 : FontWeight.w100,
+            letterSpacing: 1
+        )),
       ],
     );
+  }
+
+  Widget _buildSecureAction(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.checkout),
+      child: Container(
+        width: double.infinity,
+        height: 70,
+        color: luxuryGold,
+        child: const Center(
+          child: Text("SECURE ACCESS",
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 11)),
+        ),
+      ),
+    ).animate().fadeIn(delay: 400.ms);
   }
 
   Widget _buildEmptyVault(BuildContext context) {
@@ -184,19 +194,24 @@ class CartPage extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.shopping_bag_outlined, color: luxuryGold.withValues(alpha: 0.1), size: 60),
-          const SizedBox(height: 25),
-          Text("THE VAULT IS EMPTY", style: TextStyle(color: luxuryGold.withValues(alpha: 0.3), letterSpacing: 8, fontSize: 10)),
+          Icon(Icons.inventory_2_outlined, color: Colors.white.withValues(alpha: 0.05), size: 80),
+          const SizedBox(height: 30),
+          const Text("THE VAULT IS CURRENTLY EMPTY",
+              style: TextStyle(color: Colors.white24, letterSpacing: 5, fontSize: 9)),
           const SizedBox(height: 40),
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              decoration: BoxDecoration(border: Border.all(color: Colors.white10)),
-              child: const Text("RETURN TO GALLERY", style: TextStyle(color: Colors.white, fontSize: 9, letterSpacing: 3)),
-            ),
-          ),
+          _buildCinematicButton(context, "CONTINUE DISCOVERY"),
         ],
+      ),
+    ).animate().fadeIn();
+  }
+
+  Widget _buildCinematicButton(BuildContext context, String text) {
+    return GestureDetector(
+      onTap: () => Navigator.pop(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+        decoration: BoxDecoration(border: Border.all(color: luxuryGold.withValues(alpha: 0.5))),
+        child: Text(text, style: TextStyle(color: luxuryGold, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 3)),
       ),
     );
   }
