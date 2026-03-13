@@ -4,53 +4,61 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 
 /// WORLD-CLASS AUTH SERVICE
-/// Implements high-caliber error handling and atomic Firestore synchronization.
+/// Engineered for zero silent failures and guaranteed Firestore synchronization.
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Global Luxury Standard: Use a more descriptive error handling pattern
   String _errorMessage = "";
   String get errorMessage => _errorMessage;
 
   /// EMAIL AUTHENTICATION
   Future<User?> signInWithEmail(String email, String password) async {
     try {
-      // Input Sanitation: Prevents "Invalid Email" errors from accidental spaces
       UserCredential result = await _auth.signInWithEmailAndPassword(
           email: email.trim(), password: password.trim());
 
-      // Verification Sync: Ensure doc exists even on old accounts
       if (result.user != null) {
-        await _ensureUserDocumentExists(result.user!);
+        await _syncUserToFirestore(result.user!, 'customer');
       }
       return result.user;
     } on FirebaseAuthException catch (e) {
       _errorMessage = e.message ?? "Authentication Failed";
       debugPrint("Auth Error: $_errorMessage");
       return null;
+    } catch (e) {
+      // CRITICAL FIX: Catching Firestore or Network errors
+      _errorMessage = "Database Sync Failed. Please try again.";
+      debugPrint("System Error during Login: $e");
+      return null;
     }
   }
 
   /// IDENTITY CREATION (Signup)
-  /// Atomic Operation: Auth User and Firestore Doc are treated as a single event.
+  /// Atomic Operation: Guarantees Firestore doc creation.
   Future<User?> signUpWithEmail(String email, String password, String name) async {
     try {
+      // 1. Create Auth Identity
       UserCredential result = await _auth.createUserWithEmailAndPassword(
           email: email.trim(), password: password.trim());
 
       if (result.user != null) {
-        // Update Firebase Profile immediately for local UI consistency
-        await result.user!.updateDisplayName(name);
+        // 2. Update Local Profile
+        await result.user!.updateDisplayName(name.trim());
 
-        // Create the Root User Document before returning to the UI
-        // This prevents the "Denied" error caused by a missing Firestore record
-        await _syncUserToFirestore(result.user!, 'Customer', name: name);
+        // 3. Force Database Creation
+        await _syncUserToFirestore(result.user!, 'customer', name: name.trim());
       }
       return result.user;
     } on FirebaseAuthException catch (e) {
       _errorMessage = e.message ?? "Registration Denied";
+      debugPrint("Auth Creation Error: $_errorMessage");
+      return null;
+    } catch (e) {
+      // CRITICAL FIX: If Firestore fails to create the document, we catch it here!
+      _errorMessage = "Account created, but database sync failed.";
+      debugPrint("Firestore Sync Error during Signup: $e");
       return null;
     }
   }
@@ -59,7 +67,7 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null;
+      if (googleUser == null) return null; // User canceled
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
@@ -70,41 +78,63 @@ class AuthService {
       UserCredential result = await _auth.signInWithCredential(credential);
 
       if (result.user != null) {
-        await _syncUserToFirestore(result.user!, 'Customer');
+        await _syncUserToFirestore(result.user!, 'customer');
       }
 
       return result.user;
     } catch (e) {
       _errorMessage = "Google Identity Verification Failed";
+      debugPrint("Google Auth Error: $e");
       return null;
     }
   }
 
-  /// INTERNAL CORE: ROOT USER SYNCHRONIZATION
-  /// Ensures the 'users' root collection follows the global standard schema.
-  Future<void> _syncUserToFirestore(User user, String role, {String? name}) async {
-    final userDoc = _firestore.collection('users').doc(user.uid);
-
-    // We use SetOptions(merge: true) to ensure document creation without data loss
-    await userDoc.set({
-      'uid': user.uid,
-      'email': user.email,
-      'name': name ?? user.displayName ?? 'Valued Member',
-      'role': role, // Critical for AuthWrapper routing
-      'status': 'Active',
-      'lastActive': FieldValue.serverTimestamp(),
-      'metadata': {
-        'platform': defaultTargetPlatform.toString(),
-        'appVersion': '1.0.0',
+  /// ROLE-BASED ACCESS CONTROL (RBAC) FETCHER
+  Future<String> getUserRole(String uid) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data() as Map<String, dynamic>;
+        return data['role']?.toString().toLowerCase() ?? 'customer';
       }
-    }, SetOptions(merge: true));
+      return 'customer';
+    } catch (e) {
+      debugPrint("Role Fetch Error: $e");
+      return 'customer';
+    }
   }
 
-  /// RECOVERY LOGIC: For existing users without Firestore docs
-  Future<void> _ensureUserDocumentExists(User user) async {
-    final doc = await _firestore.collection('users').doc(user.uid).get();
-    if (!doc.exists) {
-      await _syncUserToFirestore(user, 'Customer');
+  /// INTERNAL CORE: ROOT USER SYNCHRONIZATION
+  /// Bruteforces the document creation. If this fails, the catch blocks above will trigger.
+  Future<void> _syncUserToFirestore(User user, String defaultRole, {String? name}) async {
+    try {
+      final userDoc = _firestore.collection('users').doc(user.uid);
+      final snapshot = await userDoc.get();
+
+      Map<String, dynamic> data = {
+        'uid': user.uid,
+        'email': user.email,
+        'status': 'Active',
+        'lastActive': FieldValue.serverTimestamp(),
+        'metadata': {
+          'platform': defaultTargetPlatform.toString(),
+          'appVersion': '1.0.0',
+        }
+      };
+
+      if (!snapshot.exists) {
+        data['role'] = defaultRole;
+        data['name'] = name ?? user.displayName ?? 'Valued Member';
+      } else if (name != null && name.isNotEmpty) {
+        data['name'] = name;
+      }
+
+      await userDoc.set(data, SetOptions(merge: true));
+      debugPrint("✅ FIRESTORE SYNC SUCCESS: Document created/updated for ${user.uid}");
+
+    } catch (e) {
+      debugPrint("❌ FIRESTORE SYNC FATAL ERROR: $e");
+      throw Exception("Failed to write to Firestore: $e"); // Throwing it up to be caught by the UI flow
     }
   }
 

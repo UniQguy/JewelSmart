@@ -3,14 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-// Editorial Dashboards
-import 'home_page.dart';
+// Editorial Dashboards & Global Shell
+import '../../main_wrapper.dart';
 import 'login_page.dart';
 import 'staff_dashboard.dart';
 import 'admin_dashboard.dart';
 
 /// WORLD-CLASS AUTHENTICATION GATEKEEPER
-/// Optimized to eliminate latency and implement role-based routing with elegance.
+/// Optimized for seamless role-based routing and uninterrupted 3D spatial continuity.
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -31,8 +31,6 @@ class AuthWrapper extends StatelessWidget {
           final User user = snapshot.data!;
 
           return StreamBuilder<DocumentSnapshot>(
-            // We use snapshots() instead of get() to react instantly to role changes
-            // without manual refreshing.
             stream: FirebaseFirestore.instance
                 .collection('users')
                 .doc(user.uid)
@@ -42,21 +40,22 @@ class AuthWrapper extends StatelessWidget {
                 return _cinematicLoader(luxuryGold);
               }
 
-              // Default to 'Customer' if document hasn't propagated yet
-              String role = 'Customer';
+              // Default to 'customer'
+              String role = 'customer';
               if (userSnapshot.hasData && userSnapshot.data!.exists) {
                 final data = userSnapshot.data!.data() as Map<String, dynamic>;
-                role = data['role'] ?? 'Customer';
+                // FIXED: Normalize to lowercase to match your Firestore entries exactly
+                role = (data['role'] ?? 'customer').toString().toLowerCase();
               }
 
               // High-Caliber Routing Logic
               switch (role) {
-                case "Admin":
+                case "admin":
                   return const AdminDashboard();
-                case "Staff":
+                case "staff":
                   return const StaffDashboard();
                 default:
-                  return const HomePage();
+                  return const MainWrapper();
               }
             },
           );
@@ -69,38 +68,67 @@ class AuthWrapper extends StatelessWidget {
   }
 
   /// LUXURY INITIALIZER
-  /// Replaces the "childish" default loader with a premium editorial transition.
+  /// Replaces the default loader with a premium, spatially deep transition.
   Widget _cinematicLoader(Color color) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Minimalist geometric loader
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(
-                color: color,
-                strokeWidth: 1, // Ultra-thin line for a refined look
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 1.5,
+                  colors: [
+                    color.withValues(alpha: 0.08),
+                    Colors.black,
+                  ],
+                ),
               ),
-            ).animate(onPlay: (c) => c.repeat())
-                .scale(duration: 1.seconds, begin: const Offset(1, 1), end: const Offset(1.2, 1.2), curve: Curves.easeInOut),
+            ).animate(onPlay: (c) => c.repeat(reverse: true))
+                .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 6.seconds),
+          ),
 
-            const SizedBox(height: 30),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 45,
+                  height: 45,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        color: color.withValues(alpha: 0.2),
+                        strokeWidth: 1,
+                        value: 1.0,
+                      ),
+                      CircularProgressIndicator(
+                        color: color,
+                        strokeWidth: 1.5,
+                      ),
+                    ],
+                  ),
+                ).animate(onPlay: (c) => c.repeat())
+                    .scale(duration: 1.5.seconds, begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), curve: Curves.easeInOutSine),
 
-            const Text(
-              "INITIALIZING SECURE ACCESS",
-              style: TextStyle(
-                color: Colors.white24,
-                fontSize: 8,
-                letterSpacing: 4,
-                fontWeight: FontWeight.w900,
-              ),
-            ).animate().fadeIn(duration: 800.ms),
-          ],
-        ),
+                const SizedBox(height: 40),
+
+                const Text(
+                  "INITIALIZING SECURE ACCESS",
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 8,
+                    letterSpacing: 6,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 1.seconds),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

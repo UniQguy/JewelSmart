@@ -1,18 +1,26 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-// World-Class Routing & Feature Imports
+// 100% Correct Relative Imports
 import '../../../core/router/app_routes.dart';
-import '../../profile/presentation/profile_page.dart';
-import '../../cart/presentation/cart_page.dart';
 import '../domain/product_model.dart';
-import 'category_page.dart';
 import 'widgets/luxury_product_card.dart';
+import '../domain/product_model.dart';
 
-/// THE EDITORIAL DISCOVERY HUB
-/// Redefined with a global luxury aesthetic, parallax motion, and refined spacing.
+final List<Product> mockProducts = [
+  Product(
+    id: "1",
+    title: "EMERALD HEIRLOOM",
+    price: 12500,
+    description: "A timeless masterpiece.",
+    category: "RINGS",
+    imageUrl: "assets/products/ring_1.jpg", // Ensure paths are correct
+    createdAt: DateTime.now(),
+  ),
+];
+/// THE DISCOVERY STUDIO (HOME)
+/// Stripped of local navigation to integrate seamlessly with MainWrapper's 3D Shell.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -26,14 +34,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   late AnimationController _sparkleController;
   double _scrollOffset = 0.0;
-  int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _sparkleController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 10),
+      duration: const Duration(seconds: 12),
     )..repeat(reverse: true);
 
     _scrollController.addListener(() {
@@ -51,200 +58,224 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      extendBody: true, // Allows content to flow behind glass navigation
+      // CRITICAL: Transparent background lets MainWrapper's 3D depth show through
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
+      appBar: _buildLiquidAppBar(),
       body: Stack(
         children: [
-          _buildAmbientSparkleBackground(),
-          CustomScrollView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              _buildLuxuryAppBar(),
-              _buildHeroParallaxSection(),
-              _buildSectionLabel("THE 2026 COLLECTIONS"),
-              _buildHorizontalCategoryScroll(),
-              _buildSectionLabel("FEATURED ACQUISITIONS"),
-              _buildStaggeredProductGrid(),
-              const SliverToBoxAdapter(child: SizedBox(height: 120)),
-            ],
-          ),
-          _buildGlassBottomNavigation(),
+          _buildAmbientGlow(),
+          _buildMainExhibition(),
         ],
       ),
     );
   }
 
-  Widget _buildLuxuryAppBar() {
-    return SliverAppBar(
-      backgroundColor: Colors.black.withValues(alpha: _scrollOffset > 50 ? 0.9 : 0.0),
-      floating: true,
-      pinned: true,
-      elevation: 0,
-      centerTitle: true,
-      title: const Text("JEWELSMART",
-          style: TextStyle(color: Colors.white, fontSize: 12, letterSpacing: 8, fontWeight: FontWeight.w200)),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pushNamed(context, AppRoutes.cart),
-        ),
-        const SizedBox(width: 10),
-      ],
+  Widget _buildMainExhibition() {
+    return SingleChildScrollView(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        children: [
+          _buildPerspectiveHero(),
+          const SizedBox(height: 40),
+          _buildSectionLabel("CURATED COLLECTIONS"),
+          _buildDynamicCategoryBar(),
+          const SizedBox(height: 50),
+          _buildSectionLabel("THE 2026 EXHIBIT"),
+          _buildStaggeredGallery(),
+          // Added 120px padding to ensure the last items clear the MainWrapper's Glass Dock
+          const SizedBox(height: 120),
+        ],
+      ),
     );
   }
 
-  Widget _buildHeroParallaxSection() {
-    return SliverToBoxAdapter(
-      child: Container(
-        height: 500,
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        clipBehavior: Clip.antiAlias,
-        decoration: const BoxDecoration(color: Colors.white10),
-        child: Stack(
-          children: [
-            // Parallax Background Image
-            Transform.translate(
-              offset: Offset(0, _scrollOffset * 0.4),
-              child: Container(
-                height: 700,
-                decoration: const BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/images/login_bg.jpg'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
+  PreferredSizeWidget _buildLiquidAppBar() {
+    double opacity = (_scrollOffset / 300).clamp(0.0, 1.0);
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(90),
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15 * opacity, sigmaY: 15 * opacity),
+          child: AppBar(
+            backgroundColor: Colors.black.withValues(alpha: opacity * 0.7),
+            elevation: 0,
+            centerTitle: true,
+            title: Text(
+                'JEWEL SMART',
+                style: TextStyle(
+                    color: luxuryGold,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    letterSpacing: 18 * (1 - opacity).clamp(0.5, 1.0)
+                )
             ),
-            // Gradient Overlay
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.8)],
-                ),
-              ),
-            ),
-            // Editorial Text
-            Positioned(
-              bottom: 40,
-              left: 30,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("EDITORIAL", style: TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 5)),
-                  const SizedBox(height: 10),
-                  Text("THE ART OF\nPRECISION",
-                      style: TextStyle(color: luxuryGold, fontSize: 32, fontWeight: FontWeight.w100, height: 1.1)),
-                  const SizedBox(height: 20),
-                  _buildCinematicButton("DISCOVER"),
-                ],
-              ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
-            ),
-          ],
+            // FIXED: Removed the local Search icon.
+            // Navigation should occur strictly through the MainWrapper's floating dock
+            // to preserve the 3D spatial illusion and prevent the "white screen glitch".
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStaggeredProductGrid() {
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 20,
-          crossAxisSpacing: 20,
-          childAspectRatio: 0.7,
-        ),
-        delegate: SliverChildBuilderDelegate(
-              (context, index) {
-            return AnimationConfiguration.staggeredGrid(
+  Widget _buildPerspectiveHero() {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.85,
+      width: double.infinity,
+      child: Stack(
+        children: [
+          Transform.translate(
+            offset: Offset(0, _scrollOffset * 0.4),
+            child: Transform.scale(
+              scale: 1.2,
+              child: Image.asset(
+                  'assets/images/login_bg.jpg',
+                  fit: BoxFit.cover,
+                  height: double.infinity,
+                  width: double.infinity
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.1),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.8),
+                  Colors.transparent // Fades to transparent to merge with MainWrapper
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 120,
+            left: 30,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("COLLECTION • 2026", style: TextStyle(color: luxuryGold, letterSpacing: 8, fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 15),
+                const Text("ETHEREAL\nRADIANCE", style: TextStyle(color: Colors.white, fontSize: 62, fontWeight: FontWeight.w100, height: 0.85, letterSpacing: -2)),
+                const SizedBox(height: 35),
+                _buildCinematicButton("EXPLORE THE VAULT"),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDynamicCategoryBar() {
+    final categories = ["NECKLACES", "RINGS", "BRACELETS", "EARRINGS"];
+    return SizedBox(
+      height: 60,
+      child: AnimationLimiter(
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          physics: const BouncingScrollPhysics(),
+          itemCount: categories.length,
+          itemBuilder: (context, index) {
+            return AnimationConfiguration.staggeredList(
               position: index,
               duration: const Duration(milliseconds: 800),
-              columnCount: 2,
               child: SlideAnimation(
-                verticalOffset: 50.0,
+                horizontalOffset: 50.0,
                 child: FadeInAnimation(
-                  child: LuxuryProductCard(
-                    product: mockProducts[index % mockProducts.length],
+                  child: GestureDetector(
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      AppRoutes.category,
+                      arguments: categories[index],
+                    ),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 30),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.03),
+                        border: Border.all(
+                            color: luxuryGold.withValues(alpha: 0.3),
+                            width: 0.5
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          categories[index],
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              letterSpacing: 4,
+                              fontWeight: FontWeight.w900
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
             );
           },
-          childCount: 4,
         ),
       ),
     );
   }
 
-  Widget _buildGlassBottomNavigation() {
-    return Positioned(
-      bottom: 30,
-      left: 30,
-      right: 30,
-      child: ClipRRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              border: Border.all(color: Colors.white10),
-              borderRadius: BorderRadius.circular(0), // High-fashion square edges
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(Icons.home_outlined, 0),
-                _buildNavItem(Icons.search, 1),
-                _buildNavItem(Icons.auto_awesome_outlined, 2), // AR Try-On
-                _buildNavItem(Icons.person_outline, 3),
-              ],
-            ),
+  Widget _buildStaggeredGallery() {
+    return AnimationLimiter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 25),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 30,
+            crossAxisSpacing: 25,
+            childAspectRatio: 0.58, // Synced to prevent UI overflow
           ),
+          itemCount: mockProducts.length,
+          itemBuilder: (context, index) {
+            final product = mockProducts[index];
+            return AnimationConfiguration.staggeredGrid(
+              position: index,
+              duration: const Duration(milliseconds: 1000),
+              columnCount: 2,
+              child: SlideAnimation(
+                verticalOffset: 50,
+                child: FadeInAnimation(
+                  child: LuxuryProductCard(
+                    product: product,
+                    onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: product),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, int index) {
-    bool isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: isSelected ? luxuryGold : Colors.white38, size: 20),
-          if (isSelected)
-            Container(
-              margin: const EdgeInsets.top(4),
-              width: 4,
-              height: 4,
-              decoration: BoxDecoration(color: luxuryGold, shape: BoxShape.circle),
-            ).animate().scale(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAmbientSparkleBackground() {
+  Widget _buildAmbientGlow() {
     return AnimatedBuilder(
       animation: _sparkleController,
       builder: (context, child) {
         return Positioned(
-          top: -200 + (_sparkleController.value * 50),
-          right: -200,
+          top: -150 + (100 * _sparkleController.value),
+          right: -100 + (50 * _sparkleController.value),
           child: Container(
-            width: 600,
-            height: 600,
+            width: 400, height: 400,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: luxuryGold.withValues(alpha: 0.01),
+              color: luxuryGold.withValues(alpha: 0.02),
               boxShadow: [
-                BoxShadow(color: luxuryGold.withValues(alpha: 0.03), blurRadius: 150, spreadRadius: 50)
+                BoxShadow(color: luxuryGold.withValues(alpha: 0.05), blurRadius: 150, spreadRadius: 60)
               ],
             ),
           ),
@@ -254,33 +285,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildSectionLabel(String label) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.only(left: 30, top: 40, bottom: 20),
-        child: Text(label,
-            style: const TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 5, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-  Widget _buildHorizontalCategoryScroll() {
-    final categories = ["RINGS", "NECKLACES", "BRACELETS", "WATCHES"];
-    return SliverToBoxAdapter(
-      child: SizedBox(
-        height: 40,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 25),
-          itemCount: categories.length,
-          itemBuilder: (context, index) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              child: Center(
-                child: Text(categories[index],
-                    style: const TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 3)),
-              ),
-            );
-          },
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+            label,
+            style: const TextStyle(color: Colors.white24, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 6)
         ),
       ),
     );
@@ -288,13 +299,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildCinematicButton(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 45, vertical: 20),
       decoration: BoxDecoration(
-        border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
-        color: Colors.white.withValues(alpha: 0.02),
+          border: Border.all(color: luxuryGold.withValues(alpha: 0.6), width: 0.5),
+          color: Colors.white.withValues(alpha: 0.02)
       ),
-      child: Text(text,
-          style: TextStyle(color: luxuryGold, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 4)),
+      child: Text(text, style: TextStyle(color: luxuryGold, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 5)),
     );
   }
 }

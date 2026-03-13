@@ -1,5 +1,5 @@
 name: jewelsmart
-description: A new Flutter project for premium jewelry.
+description: The world's most beautiful 3D designed jewelry application.
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -11,23 +11,26 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.6
 
-  # State Management & UI
+  # 1. ARCHITECTURE & STATE MANAGEMENT
   flutter_riverpod: ^2.4.9
-  shimmer: ^3.0.0
-  flutter_staggered_animations: ^1.0.0
 
-  # Hardware & AR
+  # 2. UI / UX ENHANCEMENTS (The Spatial 3D Experience)
+  flutter_animate: ^4.5.0
+  flutter_staggered_animations: ^1.1.1 # Updated for strict Dart 3 compatibility
+  shimmer: ^3.0.0
+  google_fonts: ^6.1.0 # CRITICAL: Guarantees your 'Cinzel' luxury font renders perfectly
+
+  # 3. THE VIRTUAL ATELIER (AR & Camera)
   camera: ^0.11.0
   permission_handler: ^11.3.1
 
-  # Firebase & Identity
+  # 4. SECURITY & IDENTITY (Firebase Gateways)
   firebase_core: ^3.10.1
   firebase_auth: ^5.4.4
-  cloud_firestore: ^5.6.2  # REQUIRED: Added to fix auth_service.dart errors
+  cloud_firestore: ^5.6.2
   google_sign_in: ^6.2.2
-
-  # Advanced Visuals
-  flutter_animate: ^4.5.0
+  image_picker: ^1.2.1
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
@@ -37,7 +40,19 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # GLOBAL ASSET REGISTRY
+  # Ensure these exact folders exist in your root directory
   assets:
     - assets/images/
     - assets/logos/
     - assets/products/
+
+  # LOCAL TYPOGRAPHY FALLBACK
+  # Uncomment this block ONLY if you decide to download the TTF files
+  # manually instead of using the google_fonts package.
+  # fonts:
+  #   - family: Cinzel
+  #     fonts:
+  #       - asset: assets/fonts/Cinzel-Regular.ttf
+  #       - asset: assets/fonts/Cinzel-Bold.ttf
+  #         weight: 700

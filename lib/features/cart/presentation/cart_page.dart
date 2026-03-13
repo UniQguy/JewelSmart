@@ -5,10 +5,9 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/cart_provider.dart';
 import '../../../core/router/app_routes.dart';
-import '../../auth/domain/product_model.dart';
 
 /// THE PRIVATE VAULT (CART)
-/// Redefined as a minimalist editorial ledger with premium glassmorphism.
+/// Engineered to float seamlessly within the MainWrapper's 3D spatial shell.
 class CartPage extends ConsumerWidget {
   const CartPage({super.key});
 
@@ -20,24 +19,31 @@ class CartPage extends ConsumerWidget {
     final totalAmount = ref.watch(cartTotalProvider);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      // CRITICAL: Transparent background lets MainWrapper's 3D depth show through
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: _buildVaultAppBar(context),
       body: cartItems.isEmpty
           ? _buildEmptyVault(context)
           : Stack(
         children: [
+          // 1. Ambient Vault Glow
+          _buildAmbientGlow(),
+
+          // 2. Liquid Scroll List
           AnimationLimiter(
             child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(30, 20, 30, 280),
+              // Massive bottom padding so the last item scrolls past the floating checkout & global dock
+              padding: const EdgeInsets.fromLTRB(25, 120, 25, 380),
               physics: const BouncingScrollPhysics(),
               itemCount: cartItems.length,
               itemBuilder: (context, index) {
                 final item = cartItems[index];
                 return AnimationConfiguration.staggeredList(
                   position: index,
-                  duration: const Duration(milliseconds: 600),
+                  duration: const Duration(milliseconds: 800),
                   child: SlideAnimation(
-                    verticalOffset: 30.0,
+                    verticalOffset: 50.0,
                     child: FadeInAnimation(
                       child: _buildVaultItem(context, ref, item),
                     ),
@@ -46,6 +52,8 @@ class CartPage extends ConsumerWidget {
               },
             ),
           ),
+
+          // 3. Floating Checkout Panel (Elevated above MainWrapper Dock)
           _buildBoutiqueCheckoutPanel(context, totalAmount),
         ],
       ),
@@ -53,17 +61,42 @@ class CartPage extends ConsumerWidget {
   }
 
   PreferredSizeWidget _buildVaultAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.black,
-      elevation: 0,
-      centerTitle: true,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
-        onPressed: () => Navigator.pop(context),
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(90),
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: AppBar(
+            backgroundColor: Colors.black.withOpacity(0.4),
+            elevation: 0,
+            centerTitle: true,
+            automaticallyImplyLeading: false, // Removed back button as this is a root tab
+            title: const Text(
+                "THE VAULT",
+                style: TextStyle(color: Colors.white, fontSize: 11, letterSpacing: 10, fontWeight: FontWeight.w900)
+            ),
+          ),
+        ),
       ),
-      title: const Text("THE VAULT",
-          style: TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 8, fontWeight: FontWeight.w200)),
     );
+  }
+
+  Widget _buildAmbientGlow() {
+    return Positioned(
+      top: 100,
+      left: -100,
+      child: Container(
+        width: 300,
+        height: 300,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: luxuryGold.withOpacity(0.03),
+          boxShadow: [
+            BoxShadow(color: luxuryGold.withOpacity(0.05), blurRadius: 100, spreadRadius: 40)
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 2.seconds).shimmer(duration: 5.seconds);
   }
 
   Widget _buildVaultItem(BuildContext context, WidgetRef ref, dynamic item) {
@@ -71,39 +104,59 @@ class CartPage extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 25),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
-        border: Border.all(color: Colors.white10, width: 0.5),
+        color: Colors.white.withOpacity(0.02),
+        border: Border.all(color: Colors.white.withOpacity(0.05), width: 0.5),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, spreadRadius: 5)
+        ],
       ),
       child: Row(
         children: [
-          // High-Resolution Preview
-          Container(
-            width: 80,
-            height: 80,
-            color: Colors.white.withValues(alpha: 0.05),
-            child: Image.asset(item.product.imagePath, fit: BoxFit.cover),
+          // High-Resolution Preview with subtle scale
+          Hero(
+            tag: 'vault_item_${item.product.productId}',
+            child: Container(
+              width: 85,
+              height: 85,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border.all(color: Colors.white10, width: 0.5),
+                image: DecorationImage(
+                  image: AssetImage(item.product.imagePath),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 25),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.product.title.toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 5),
-                Text("\$${item.product.totalPayableAmount.toStringAsFixed(2)}",
-                    style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 1)),
+                Text(
+                    item.product.title.toUpperCase(),
+                    style: const TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.w900)
+                ),
+                const SizedBox(height: 8),
+                Text(
+                    "\$${item.product.totalPayableAmount.toStringAsFixed(2)}",
+                    style: TextStyle(color: luxuryGold, fontSize: 12, letterSpacing: 1, fontWeight: FontWeight.w300)
+                ),
               ],
             ),
           ),
-          // Quantity Controls
+          // Precision Quantity Controls
           Row(
             children: [
               _quantityAction(Icons.remove, () => ref.read(cartProvider.notifier).decrementQuantity(item.product.productId)),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text("${item.quantity}",
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w200)),
+              SizedBox(
+                width: 30,
+                child: Center(
+                  child: Text(
+                      "${item.quantity}",
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)
+                  ),
+                ),
               ),
               _quantityAction(Icons.add, () => ref.read(cartProvider.notifier).addItem(item.product)),
             ],
@@ -116,37 +169,44 @@ class CartPage extends ConsumerWidget {
   Widget _quantityAction(IconData icon, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(border: Border.all(color: Colors.white10)),
-        child: Icon(icon, color: Colors.white38, size: 12),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          color: Colors.white.withOpacity(0.02),
+        ),
+        child: Icon(icon, color: Colors.white54, size: 12),
       ),
     );
   }
 
   Widget _buildBoutiqueCheckoutPanel(BuildContext context, double total) {
     return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: ClipRect(
+      bottom: 120, // CRITICAL: Floats above the MainWrapper's Navigation Dock
+      left: 20,
+      right: 20,
+      child: ClipRRect(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
           child: Container(
             padding: const EdgeInsets.all(35),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.8),
-              border: const Border(top: BorderSide(color: Colors.white10, width: 0.5)),
+                color: Colors.black.withOpacity(0.5), // More transparent to show background depth
+                border: Border.all(color: Colors.white.withOpacity(0.08), width: 0.5),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30, spreadRadius: 10)
+                ]
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _priceRow("SUBTOTAL", "\$${total.toStringAsFixed(2)}", isSmall: true),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 _priceRow("ESTIMATED TAX", "\$${(total * 0.03).toStringAsFixed(2)}", isSmall: true),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Divider(color: Colors.white10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 25),
+                  child: Divider(color: Colors.white.withOpacity(0.1), height: 1),
                 ),
                 _priceRow("TOTAL ACQUISITION", "\$${(total * 1.03).toStringAsFixed(2)}", isSmall: false),
                 const SizedBox(height: 35),
@@ -156,20 +216,26 @@ class CartPage extends ConsumerWidget {
           ),
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.2, end: 0, curve: Curves.easeOutQuart);
   }
 
   Widget _priceRow(String label, String value, {required bool isSmall}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: isSmall ? Colors.white24 : Colors.white60, fontSize: 8, letterSpacing: 4)),
-        Text(value, style: TextStyle(
-            color: isSmall ? Colors.white70 : luxuryGold,
-            fontSize: isSmall ? 12 : 22,
-            fontWeight: isSmall ? FontWeight.w300 : FontWeight.w100,
-            letterSpacing: 1
-        )),
+        Text(
+            label,
+            style: TextStyle(color: isSmall ? Colors.white38 : Colors.white70, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold)
+        ),
+        Text(
+            value,
+            style: TextStyle(
+                color: isSmall ? Colors.white : luxuryGold,
+                fontSize: isSmall ? 12 : 24,
+                fontWeight: isSmall ? FontWeight.w400 : FontWeight.w200,
+                letterSpacing: 2
+            )
+        ),
       ],
     );
   }
@@ -179,14 +245,21 @@ class CartPage extends ConsumerWidget {
       onTap: () => Navigator.pushNamed(context, AppRoutes.checkout),
       child: Container(
         width: double.infinity,
-        height: 70,
-        color: luxuryGold,
+        height: 65,
+        decoration: BoxDecoration(
+            color: luxuryGold.withOpacity(0.9),
+            boxShadow: [
+              BoxShadow(color: luxuryGold.withOpacity(0.2), blurRadius: 20, spreadRadius: 2)
+            ]
+        ),
         child: const Center(
-          child: Text("SECURE ACCESS",
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 11)),
+          child: Text(
+              "SECURE ACCESS",
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 6, fontSize: 10)
+          ),
         ),
       ),
-    ).animate().fadeIn(delay: 400.ms);
+    ).animate().shimmer(delay: 1.seconds, duration: 2.seconds, color: Colors.white38);
   }
 
   Widget _buildEmptyVault(BuildContext context) {
@@ -194,25 +267,17 @@ class CartPage extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, color: Colors.white.withValues(alpha: 0.05), size: 80),
-          const SizedBox(height: 30),
-          const Text("THE VAULT IS CURRENTLY EMPTY",
-              style: TextStyle(color: Colors.white24, letterSpacing: 5, fontSize: 9)),
+          Icon(Icons.inventory_2_outlined, color: luxuryGold.withOpacity(0.2), size: 60)
+              .animate(onPlay: (controller) => controller.repeat(reverse: true))
+              .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 2.seconds),
           const SizedBox(height: 40),
-          _buildCinematicButton(context, "CONTINUE DISCOVERY"),
+          const Text(
+              "THE VAULT IS SECURED\nAND AWAITING ACQUISITIONS",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white38, letterSpacing: 6, fontSize: 8, height: 1.8, fontWeight: FontWeight.bold)
+          ),
         ],
       ),
-    ).animate().fadeIn();
-  }
-
-  Widget _buildCinematicButton(BuildContext context, String text) {
-    return GestureDetector(
-      onTap: () => Navigator.pop(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-        decoration: BoxDecoration(border: Border.all(color: luxuryGold.withValues(alpha: 0.5))),
-        child: Text(text, style: TextStyle(color: luxuryGold, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 3)),
-      ),
-    );
+    ).animate().fadeIn(duration: 1.seconds);
   }
 }

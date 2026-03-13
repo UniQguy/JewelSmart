@@ -1,5 +1,6 @@
 import '../purchase_model.dart';
 
 abstract class PurchaseRepository {
-  Future<List<PurchaseRecord>> getPurchaseHistory();
+  // FIXED: Changed Purchase to PurchaseRecord and added the userId parameter
+  Future<List<PurchaseRecord>> getPurchaseHistory(String userId);
 }

@@ -1,235 +1,247 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../domain/product_model.dart';
-import '../data/report_service.dart';
-// REQUIRED: Import AuthService to handle the Logout procedure
-import '../data/auth_service.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-class AdminDashboard extends ConsumerStatefulWidget {
+import '../../../core/router/app_routes.dart';
+
+/// THE COMMAND CENTER (ADMIN DASHBOARD)
+/// Engineered as a high-clearance executive terminal with spatial metrics.
+class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
 
-  @override
-  ConsumerState<AdminDashboard> createState() => _AdminDashboardState();
-}
-
-class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   final Color luxuryGold = const Color(0xFFD4AF37);
 
-  void _handleRoleUpdate(String userName, String currentRole) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.black,
-      shape: const RoundedRectangleBorder(
-        side: BorderSide(color: Color(0xFFD4AF37), width: 0.5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("MANAGE ROLE: $userName",
-                style: const TextStyle(color: Colors.white, fontSize: 12, letterSpacing: 3)),
-            const SizedBox(height: 30),
-            _roleOption("Admin", currentRole == "Admin"),
-            _roleOption("Staff", currentRole == "Staff"),
-            _roleOption("Customer", currentRole == "Customer"),
-          ],
-        ),
-      ),
-    );
-  }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black, // Base canvas
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        children: [
+          // 1. Cinematic 3D Background Aura
+          _buildAmbientGlow(),
 
-  Widget _roleOption(String role, bool isCurrent) {
-    return ListTile(
-      title: Text(role.toUpperCase(),
-          style: TextStyle(color: isCurrent ? luxuryGold : Colors.white38, fontSize: 10, letterSpacing: 2)),
-      trailing: isCurrent ? Icon(Icons.check, color: luxuryGold, size: 16) : null,
-      onTap: () {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: luxuryGold,
-            content: Text("ROLE UPDATED TO $role", style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          // 2. Main Executive Interface
+          SafeArea(
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
+                      _buildHeader(context),
+                      const SizedBox(height: 35),
+
+                      _buildSectionLabel("EXECUTIVE OVERVIEW"),
+                      const SizedBox(height: 10),
+                      _buildKPIGrid(),
+
+                      const SizedBox(height: 40),
+
+                      _buildSectionLabel("SYSTEM ADMINISTRATION"),
+                      const SizedBox(height: 10),
+                      _buildActionList(context),
+
+                      const SizedBox(height: 80), // Bottom buffer
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
-    );
-  }
-
-  void _handleGenerateReport() {
-    final salesReport = ReportService.generateSalesReport(mockProducts);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.black,
-        shape: RoundedRectangleBorder(side: BorderSide(color: luxuryGold.withOpacity(0.3))),
-        title: Text(salesReport.type,
-            style: TextStyle(color: luxuryGold, letterSpacing: 4, fontSize: 14, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _reportText("Report ID: ${salesReport.reportId}"),
-            _reportText("Generated: ${salesReport.generatedDate.toString().split('.')[0]}"),
-            const Divider(color: Colors.white10, height: 30),
-            _reportText("Inventory Items: ${salesReport.data['total_sku_count']}"),
-            _reportText("Valuation: \$${salesReport.data['inventory_valuation']}"),
-            _reportText("Estimated GST (3%): \$${salesReport.data['tax_estimate']}"),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("DISMISS", style: TextStyle(color: luxuryGold, letterSpacing: 2, fontSize: 10)),
-          )
         ],
       ),
     );
   }
 
-  Widget _reportText(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w300)),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: _buildAdminAppBar(),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(25.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionLabel("EXECUTIVE OVERVIEW"),
-            _buildReportMetrics(),
-            const SizedBox(height: 40),
-            _buildSectionLabel("SYSTEM ADMINISTRATION"),
-            _buildAdminActions(),
-            const SizedBox(height: 40),
-            _buildSectionLabel("RECENT USER ACTIVITY"),
-            _buildUserTablePreview(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAdminAppBar() {
-    return AppBar(
-      backgroundColor: Colors.black,
-      elevation: 0,
-      title: const Text('ADMINISTRATIVE VAULT',
-          style: TextStyle(color: Colors.white, fontSize: 12, letterSpacing: 6, fontWeight: FontWeight.w200)),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.power_settings_new_rounded, color: Colors.white38, size: 18),
-          // Procedure Sync: Triggers the Logout Use Case for Admin
-          onPressed: () => AuthService().signOut(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReportMetrics() {
-    return Row(
-      children: [
-        _metricCard("TOTAL REVENUE", "\$1.2M", Icons.payments_outlined),
-        const SizedBox(width: 15),
-        _metricCard("ACTIVE USERS", "1,204", Icons.people_outline),
-      ],
-    );
-  }
-
-  Widget _metricCard(String label, String value, IconData icon) {
-    return Expanded(
+  Widget _buildAmbientGlow() {
+    return Positioned(
+      top: -150,
+      right: -100,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        width: 400,
+        height: 400,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.02),
-          border: Border.all(color: luxuryGold.withOpacity(0.2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: luxuryGold, size: 20),
-            const SizedBox(height: 15),
-            Text(label, style: const TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 2)),
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w100)),
+          shape: BoxShape.circle,
+          color: luxuryGold.withValues(alpha: 0.04),
+          boxShadow: [
+            BoxShadow(color: luxuryGold.withValues(alpha: 0.05), blurRadius: 120, spreadRadius: 40)
           ],
         ),
-      ),
+      ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 8.seconds),
     );
   }
 
-  Widget _buildAdminActions() {
-    return Column(
-      children: [
-        _actionTile(Icons.person_add_alt_1_outlined, "MANAGE USERS & ROLES", () {}),
-        _actionTile(Icons.analytics_outlined, "GENERATE ANALYTICAL REPORTS", _handleGenerateReport),
-        _actionTile(Icons.settings_suggest_outlined, "SYSTEM CONFIGURATION", () {}),
-      ],
-    );
-  }
-
-  Widget _actionTile(IconData icon, String label, VoidCallback onTap) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.02), border: Border.all(color: Colors.white10)),
-      child: ListTile(
-        leading: Icon(icon, color: luxuryGold, size: 18),
-        title: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9, letterSpacing: 3, fontWeight: FontWeight.bold)),
-        trailing: const Icon(Icons.chevron_right, color: Colors.white10, size: 14),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  Widget _buildUserTablePreview() {
-    final List<Map<String, String>> mockUsers = [
-      {"name": "PRASHANT", "role": "Admin", "status": "Active"},
-      {"name": "STAFF_MEMBER_01", "role": "Staff", "status": "Active"},
-      {"name": "CLIENT_DE-44", "role": "Customer", "status": "Inactive"},
-    ];
-
-    return Column(
-      children: mockUsers.map((user) => Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.01),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(user['name']!, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                Text(user['role']!.toUpperCase(), style: TextStyle(color: luxuryGold, fontSize: 8, letterSpacing: 2)),
-              ],
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("SECURE TERMINAL", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 6, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text("PRASHANT (ADMIN)", style: TextStyle(color: luxuryGold, fontSize: 16, letterSpacing: 4, fontWeight: FontWeight.w900)),
+            ],
+          ),
+          ClipOval(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: IconButton(
+                icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
+                onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  padding: const EdgeInsets.all(16),
+                ),
+              ),
             ),
-            IconButton(
-              icon: const Icon(Icons.edit_note_rounded, color: Colors.white38, size: 18),
-              onPressed: () => _handleRoleUpdate(user['name']!, user['role']!),
-            ),
-          ],
-        ),
-      )).toList(),
-    );
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.1, end: 0);
   }
 
   Widget _buildSectionLabel(String label) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: Text(label, style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 4)),
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Text(
+          label,
+          style: const TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 6)
+      ),
+    ).animate().fadeIn(delay: 200.ms);
+  }
+
+  Widget _buildKPIGrid() {
+    final kpis = [
+      {"label": "TOTAL REVENUE", "value": "\$1.4M", "icon": Icons.account_balance_wallet_outlined},
+      {"label": "ACTIVE USERS", "value": "1,248", "icon": Icons.people_outline},
+      {"label": "PENDING ORDERS", "value": "34", "icon": Icons.inventory_2_outlined},
+      {"label": "REPAIR QUEUE", "value": "12", "icon": Icons.build_circle_outlined},
+    ];
+
+    return AnimationLimiter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 25),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 20,
+            crossAxisSpacing: 20,
+            childAspectRatio: 1.1,
+          ),
+          itemCount: kpis.length,
+          itemBuilder: (context, index) {
+            final kpi = kpis[index];
+            return AnimationConfiguration.staggeredGrid(
+              position: index,
+              duration: const Duration(milliseconds: 600),
+              columnCount: 2,
+              child: SlideAnimation(
+                verticalOffset: 40.0,
+                child: FadeInAnimation(
+                  child: _buildGlassMetricCard(
+                      kpi["label"] as String,
+                      kpi["value"] as String,
+                      kpi["icon"] as IconData
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlassMetricCard(String label, String value, IconData icon) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.02),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 5)
+        ],
+      ),
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(icon, color: luxuryGold.withValues(alpha: 0.6), size: 22),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: const TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 3, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 5),
+                    Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 2, fontWeight: FontWeight.w300)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionList(BuildContext context) {
+    final actions = [
+      {"label": "MANAGE USERS & ROLES", "icon": Icons.admin_panel_settings_outlined, "route": ""},
+      {"label": "INVENTORY & VAULT CONTROL", "icon": Icons.diamond_outlined, "route": ""},
+      {"label": "GENERATE ANALYTICAL REPORTS", "icon": Icons.insert_chart_outlined, "route": ""},
+      {"label": "GLOBAL SYSTEM SETTINGS", "icon": Icons.settings_applications_outlined, "route": ""},
+    ];
+
+    return AnimationLimiter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 25),
+        child: Column(
+          children: AnimationConfiguration.toStaggeredList(
+            duration: const Duration(milliseconds: 600),
+            childAnimationBuilder: (widget) => SlideAnimation(
+              verticalOffset: 30.0,
+              child: FadeInAnimation(child: widget),
+            ),
+            children: actions.map((action) => _buildActionTile(action["label"] as String, action["icon"] as IconData)).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionTile(String label, IconData icon) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.01),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
+      ),
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+            leading: Icon(icon, color: luxuryGold, size: 20),
+            title: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9, letterSpacing: 4, fontWeight: FontWeight.w600)),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 12),
+            onTap: () {
+              // Future Routing Logic for Admin Sub-pages
+            },
+          ),
+        ),
+      ),
     );
   }
 }

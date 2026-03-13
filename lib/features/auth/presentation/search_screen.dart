@@ -1,10 +1,15 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+
+// Core Imports
 import '../../../core/router/app_routes.dart';
 import '../domain/product_model.dart';
 import 'widgets/luxury_product_card.dart';
 
+/// THE DISCOVERY ENGINE (SEARCH)
+/// Engineered as a liquid, glassmorphic search interface with a hidden parametric filter atelier.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
@@ -19,8 +24,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
   String _selectedStone = 'All';
   String _selectedMetal = 'All';
   String _searchQuery = '';
-  // Procedure Sync: Added dynamic price threshold
-  double _maxPrice = 1000000.0;
+  double _maxPrice = 100000.0;
 
   final List<String> stones = ['All', 'Emerald', 'Diamond', 'Ruby', 'Sapphire'];
   final List<String> metals = ['All', '22K', '18K', 'Silver'];
@@ -38,7 +42,6 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
       final matchesMetal = _selectedMetal == 'All' || product.purity.toUpperCase() == _selectedMetal.toUpperCase();
       final matchesSearch = product.title.toLowerCase().contains(_searchQuery.toLowerCase());
 
-      // Calculation Sync: Logic matches Billing Controller (Base + Making)
       final double totalPrice = product.basePrice + product.makingCharges;
       final matchesPrice = totalPrice <= _maxPrice;
 
@@ -46,59 +49,165 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     }).toList();
   }
 
+  // THE HIDDEN ATELIER: Slides up a glassmorphic sheet for filtering
+  void _showFilterAtelier(BuildContext context) {
+    // Local state variables for the bottom sheet
+    String tempStone = _selectedStone;
+    String tempMetal = _selectedMetal;
+    double tempPrice = _maxPrice;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.75,
+                  padding: const EdgeInsets.fromLTRB(25, 30, 25, 25),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.8),
+                    border: Border(top: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(child: Container(width: 40, height: 2, color: Colors.white24)),
+                      const SizedBox(height: 30),
+                      Text("PARAMETRIC FILTERS", style: TextStyle(color: luxuryGold, fontSize: 14, letterSpacing: 8, fontWeight: FontWeight.w100)),
+                      const SizedBox(height: 30),
+
+                      // STONES FILTER
+                      _buildSheetLabel("STONES"),
+                      _buildSheetOptions(stones, tempStone, (val) => setSheetState(() => tempStone = val)),
+                      const SizedBox(height: 30),
+
+                      // PURITY FILTER
+                      _buildSheetLabel("PURITY"),
+                      _buildSheetOptions(metals, tempMetal, (val) => setSheetState(() => tempMetal = val)),
+                      const SizedBox(height: 30),
+
+                      // PRICE THRESHOLD
+                      _buildSheetLabel("ACQUISITION THRESHOLD: UNDER \$${tempPrice.toInt()}"),
+                      const SizedBox(height: 10),
+                      SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 1.0,
+                          activeTrackColor: luxuryGold,
+                          inactiveTrackColor: Colors.white.withValues(alpha: 0.1),
+                          thumbColor: luxuryGold,
+                          overlayColor: luxuryGold.withValues(alpha: 0.1),
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 14.0),
+                        ),
+                        child: Slider(
+                          value: tempPrice,
+                          min: 10000,
+                          max: 200000,
+                          divisions: 38,
+                          onChanged: (val) => setSheetState(() => tempPrice = val),
+                        ),
+                      ),
+
+                      const Spacer(),
+
+                      // APPLY BUTTON
+                      SizedBox(
+                        width: double.infinity,
+                        height: 60,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: luxuryGold, width: 0.5),
+                            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                            backgroundColor: luxuryGold.withValues(alpha: 0.1),
+                          ),
+                          onPressed: () {
+                            // Update main screen state and close sheet
+                            setState(() {
+                              _selectedStone = tempStone;
+                              _selectedMetal = tempMetal;
+                              _maxPrice = tempPrice;
+                            });
+                            Navigator.pop(context);
+                          },
+                          child: const Text("APPLY PARAMETERS", style: TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 4, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSheetLabel(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: Text(title, style: const TextStyle(color: Colors.white38, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 6)),
+    );
+  }
+
+  Widget _buildSheetOptions(List<String> options, String current, Function(String) onSelect) {
+    return SizedBox(
+      height: 40,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: options.length,
+        itemBuilder: (context, index) {
+          bool isSelected = current == options[index];
+          return GestureDetector(
+            onTap: () => onSelect(options[index]),
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              decoration: BoxDecoration(
+                color: isSelected ? luxuryGold : Colors.white.withValues(alpha: 0.02),
+                border: Border.all(color: isSelected ? luxuryGold : Colors.white.withValues(alpha: 0.08), width: 0.5),
+                boxShadow: isSelected ? [BoxShadow(color: luxuryGold.withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 1)] : [],
+              ),
+              child: Center(
+                child: Text(
+                  options[index].toUpperCase(),
+                  style: TextStyle(color: isSelected ? Colors.black : Colors.white60, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 4),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filteredResults = _getFilteredProducts();
+    bool hasActiveFilters = _selectedStone != 'All' || _selectedMetal != 'All' || _maxPrice < 200000;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent, // Requires MainWrapper background
       body: Stack(
         children: [
           _buildAmbientGlow(),
           SafeArea(
+            bottom: false,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildLiquidSearchBar(context),
-                _buildFilterSection("STONES", stones, (val) => setState(() => _selectedStone = val), _selectedStone),
-                _buildFilterSection("PURITY", metals, (val) => setState(() => _selectedMetal = val), _selectedMetal),
-
-                // NEW: Price Threshold Slider Section
-                _buildSectionLabel("PRICE THRESHOLD"),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30),
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: luxuryGold,
-                      inactiveTrackColor: Colors.white10,
-                      thumbColor: luxuryGold,
-                      valueIndicatorColor: luxuryGold,
-                      valueIndicatorTextStyle: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                    ),
-                    child: Slider(
-                      value: _maxPrice,
-                      min: 10000,
-                      max: 1000000,
-                      divisions: 20,
-                      label: "UNDER \$${_maxPrice.toInt()}",
-                      onChanged: (val) => setState(() => _maxPrice = val),
-                    ),
-                  ),
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(30, 20, 30, 15),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("FOUND TREASURES",
-                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w300, letterSpacing: 8)),
-                      Text("${filteredResults.length} PIECES",
-                          style: TextStyle(color: luxuryGold, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                    ],
-                  ),
-                ),
-
+                _buildLiquidSearchBar(context, hasActiveFilters),
+                _buildResultsHeader(filteredResults.length),
                 Expanded(
                     child: filteredResults.isEmpty
                         ? _buildNoResults()
@@ -112,15 +221,6 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildSectionLabel(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(30, 25, 30, 12),
-      child: Text(title, style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 4)),
-    );
-  }
-
-  // Rest of the UI helper methods (AmbientGlow, SearchBar, FilterSection, ResultsGrid, NoResults) remain unchanged
-
   Widget _buildAmbientGlow() {
     return Positioned(
       bottom: -100,
@@ -129,101 +229,104 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
         width: 300, height: 300,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: luxuryGold.withOpacity(0.02),
-          boxShadow: [BoxShadow(color: luxuryGold.withOpacity(0.05), blurRadius: 100, spreadRadius: 50)],
+          color: luxuryGold.withValues(alpha: 0.03),
+          boxShadow: [
+            BoxShadow(color: luxuryGold.withValues(alpha: 0.04), blurRadius: 100, spreadRadius: 50)
+          ],
         ),
-      ),
+      ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 6.seconds),
     );
   }
 
-  Widget _buildLiquidSearchBar(BuildContext context) {
+  Widget _buildLiquidSearchBar(BuildContext context, bool hasActiveFilters) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      padding: const EdgeInsets.fromLTRB(25, 20, 25, 10),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
-            onPressed: () => Navigator.pop(context),
-          ),
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.zero,
+              borderRadius: BorderRadius.circular(0),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
                   height: 55,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.03),
-                    border: Border.all(color: Colors.white10),
+                    color: Colors.white.withValues(alpha: 0.02),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
                   ),
                   child: TextField(
                     controller: _searchController,
                     onChanged: (val) => setState(() => _searchQuery = val),
-                    style: const TextStyle(color: Colors.white, fontSize: 14, letterSpacing: 2),
+                    style: const TextStyle(color: Colors.white, fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w300),
                     cursorColor: luxuryGold,
                     decoration: InputDecoration(
-                      hintText: "SEARCH THE COLLECTION...",
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.15), fontSize: 10, letterSpacing: 5),
-                      prefixIcon: Icon(Icons.search_rounded, color: luxuryGold.withOpacity(0.4), size: 20),
+                      hintText: "SEARCH THE ARCHIVES...",
+                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 9, letterSpacing: 5, fontWeight: FontWeight.bold),
+                      prefixIcon: Icon(Icons.search_rounded, color: luxuryGold.withValues(alpha: 0.6), size: 18),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(vertical: 18),
                     ),
                   ),
                 ),
               ),
-            ),
+            ).animate().slideY(begin: -0.2, end: 0, duration: 600.ms, curve: Curves.easeOutQuart),
+          ),
+          const SizedBox(width: 15),
+
+          // FILTER TOGGLE BUTTON
+          GestureDetector(
+            onTap: () => _showFilterAtelier(context),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(0),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  height: 55,
+                  width: 55,
+                  decoration: BoxDecoration(
+                    color: hasActiveFilters ? luxuryGold.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.02),
+                    border: Border.all(color: hasActiveFilters ? luxuryGold : Colors.white.withValues(alpha: 0.08), width: 0.5),
+                  ),
+                  child: Icon(Icons.tune_rounded, color: hasActiveFilters ? luxuryGold : Colors.white, size: 20),
+                ),
+              ),
+            ).animate().slideX(begin: 0.2, end: 0, duration: 600.ms, curve: Curves.easeOutQuart),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterSection(String title, List<String> options, Function(String) onSelect, String current) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionLabel(title),
-        SizedBox(
-          height: 45,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 25),
-            physics: const BouncingScrollPhysics(),
-            itemCount: options.length,
-            itemBuilder: (context, index) {
-              bool isSelected = current == options[index];
-              return GestureDetector(
-                onTap: () => onSelect(options[index]),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
-                  margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                  decoration: BoxDecoration(
-                    color: isSelected ? luxuryGold : Colors.white.withOpacity(0.02),
-                    border: Border.all(color: isSelected ? luxuryGold : Colors.white10),
-                  ),
-                  child: Center(
-                    child: Text(options[index].toUpperCase(),
-                      style: TextStyle(color: isSelected ? Colors.black : Colors.white60, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 3),
-                    ),
-                  ),
-                ),
-              );
-            },
+  Widget _buildResultsHeader(int count) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(30, 20, 30, 15),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+              "FOUND TREASURES",
+              style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w300, letterSpacing: 8)
           ),
-        ),
-      ],
-    );
+          Text(
+              "$count PIECES",
+              style: TextStyle(color: luxuryGold, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 3)
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 500.ms);
   }
 
   Widget _buildResultsGrid(List<Product> products) {
     return AnimationLimiter(
       key: ValueKey('$_selectedStone-$_selectedMetal-$_searchQuery-$_maxPrice'),
       child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(25, 10, 25, 40),
+        padding: const EdgeInsets.fromLTRB(25, 10, 25, 150),
         physics: const BouncingScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2, childAspectRatio: 0.58, crossAxisSpacing: 25, mainAxisSpacing: 30,
+          crossAxisCount: 2,
+          childAspectRatio: 0.58,
+          crossAxisSpacing: 25,
+          mainAxisSpacing: 30,
         ),
         itemCount: products.length,
         itemBuilder: (context, index) {
@@ -232,10 +335,13 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
             position: index,
             duration: const Duration(milliseconds: 800),
             columnCount: 2,
-            child: FadeInAnimation(
-              child: LuxuryProductCard(
-                product: product,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: product),
+            child: SlideAnimation(
+              verticalOffset: 50,
+              child: FadeInAnimation(
+                child: LuxuryProductCard(
+                  product: product,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: product),
+                ),
               ),
             ),
           );
@@ -249,13 +355,16 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.diamond_outlined, color: luxuryGold.withOpacity(0.1), size: 50),
-          const SizedBox(height: 20),
-          Text("THE COLLECTION IS STILL EVOLVING",
-            style: TextStyle(color: luxuryGold.withOpacity(0.3), letterSpacing: 8, fontSize: 10),
+          Icon(Icons.diamond_outlined, color: luxuryGold.withValues(alpha: 0.15), size: 60)
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), duration: 2.seconds),
+          const SizedBox(height: 30),
+          const Text(
+            "THE COLLECTION IS STILL EVOLVING",
+            style: TextStyle(color: Colors.white38, letterSpacing: 6, fontSize: 8, fontWeight: FontWeight.bold),
           ),
         ],
       ),
-    );
+    ).animate().fadeIn();
   }
 }

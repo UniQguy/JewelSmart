@@ -5,7 +5,7 @@ import '../../../core/router/app_routes.dart';
 import '../data/auth_service.dart';
 
 /// THE PRIVATE VAULT ENTRANCE
-/// Redefined with a global luxury aesthetic and editorial UI patterns.
+/// Engineered with volumetric lighting, spatial depth, and premium glassmorphic architecture.
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -23,40 +23,51 @@ class _LoginPageState extends State<LoginPage> {
   bool _isPasswordVisible = false;
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      // Extends behind the status bar for a seamless "edge-to-edge" look
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
+          // 1. Cinematic 3D Background
           _buildCinematicBackground(),
-          _buildGlassOverlay(),
+          _buildVolumetricLighting(),
+
+          // 2. Main Interface
           SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 40),
+              padding: const EdgeInsets.symmetric(horizontal: 35),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 80),
-                  _buildBrandHeroText(),
-                  const SizedBox(height: 80),
-                  _buildEditorialField("MEMBER IDENTIFICATION", Icons.alternate_email_rounded, _emailController),
-                  const SizedBox(height: 35),
-                  _buildEditorialField("VAULT SECURITY KEY", Icons.lock_person_outlined, _passController, isPass: true),
                   const SizedBox(height: 60),
-                  _buildPrimaryAction(),
+                  _buildBrandHeroText(),
+                  const SizedBox(height: 60),
+
+                  // The Glassmorphic Authentication Terminal
+                  _buildAuthenticationTerminal(),
+
                   const SizedBox(height: 40),
+                  _buildPrimaryAction(),
+                  const SizedBox(height: 50),
                   _buildSocialDiscovery(),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 60),
                   _buildBottomNavigation(),
                   const SizedBox(height: 40),
                 ],
               ),
             ),
           ),
-          // High-Performance cinematic loader
+
+          // 3. High-Performance cinematic loader
           if (_isLoading) _buildGlobalLoader(),
         ],
       ),
@@ -68,29 +79,29 @@ class _LoginPageState extends State<LoginPage> {
       child: Image.asset(
         'assets/images/login_bg.jpg',
         fit: BoxFit.cover,
-      ).animate(onPlay: (c) => c.repeat())
+      ).animate(onPlay: (c) => c.repeat(reverse: true))
           .scale(
-          begin: const Offset(1.1, 1.1),
-          end: const Offset(1.3, 1.3),
-          duration: 30.seconds,
-          curve: Curves.easeInOut
+          begin: const Offset(1.05, 1.05),
+          end: const Offset(1.15, 1.15),
+          duration: 40.seconds,
+          curve: Curves.easeInOutSine
       ),
     );
   }
 
-  Widget _buildGlassOverlay() {
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40), // Deeper blur for premium feel
+  Widget _buildVolumetricLighting() {
+    return Positioned.fill(
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+          gradient: RadialGradient(
+            center: const Alignment(0, -0.2),
+            radius: 1.5,
             colors: [
-              Colors.black.withValues(alpha: 0.3),
-              Colors.black.withValues(alpha: 0.7),
+              luxuryGold.withValues(alpha: 0.15),
+              Colors.black.withValues(alpha: 0.8),
               Colors.black,
             ],
+            stops: const [0.0, 0.6, 1.0],
           ),
         ),
       ),
@@ -101,46 +112,78 @@ class _LoginPageState extends State<LoginPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("ESTABLISHED • 2026",
-            style: TextStyle(
-                color: Colors.white24,
-                fontSize: 9,
-                letterSpacing: 6,
-                fontWeight: FontWeight.bold
-            )).animate().fadeIn(delay: 200.ms),
-        const SizedBox(height: 15),
-        Text("ENTER THE\nPRIVATE VAULT",
+        const Text(
+            "ESTABLISHED • 2026",
+            style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 8, fontWeight: FontWeight.w900)
+        ).animate().fadeIn(duration: 800.ms, delay: 200.ms).slideX(begin: -0.1, end: 0),
+        const SizedBox(height: 20),
+        Text(
+            "ENTER THE\nPRIVATE VAULT",
             style: TextStyle(
                 color: luxuryGold,
-                fontSize: 50,
+                fontSize: 48,
                 fontWeight: FontWeight.w100,
-                height: 0.9,
-                letterSpacing: -2
-            )).animate().fadeIn(duration: 1200.ms).slideX(begin: -0.1),
+                height: 1.05,
+                letterSpacing: -2,
+                shadows: [Shadow(color: luxuryGold.withValues(alpha: 0.3), blurRadius: 30)]
+            )
+        ).animate().fadeIn(duration: 1000.ms, delay: 400.ms).slideX(begin: -0.05, end: 0),
       ],
     );
+  }
+
+  Widget _buildAuthenticationTerminal() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(0),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+        child: Container(
+          padding: const EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.02),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 40, spreadRadius: 10)
+            ],
+          ),
+          child: Column(
+            children: [
+              _buildEditorialField("MEMBER IDENTIFICATION", Icons.alternate_email_rounded, _emailController),
+              const SizedBox(height: 35),
+              _buildEditorialField("VAULT SECURITY KEY", Icons.lock_person_outlined, _passController, isPass: true),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 800.ms, delay: 600.ms).slideY(begin: 0.1, end: 0);
   }
 
   Widget _buildEditorialField(String label, IconData icon, TextEditingController controller, {bool isPass = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 5),
+        Text(
+            label,
+            style: const TextStyle(color: Colors.white38, fontSize: 7, letterSpacing: 5, fontWeight: FontWeight.w900)
+        ),
         TextField(
           controller: controller,
           obscureText: isPass && !_isPasswordVisible,
-          style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 1, fontWeight: FontWeight.w200),
+          style: const TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 2, fontWeight: FontWeight.w300),
           cursorColor: luxuryGold,
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: luxuryGold.withValues(alpha: 0.4), size: 18),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(right: 15),
+              child: Icon(icon, color: luxuryGold.withValues(alpha: 0.6), size: 18),
+            ),
+            prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
             suffixIcon: isPass ? IconButton(
-              icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.white10, size: 16),
+              icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.white24, size: 16),
               onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
             ) : null,
-            enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10, width: 0.5)),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5)),
             focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: luxuryGold, width: 1)),
-            contentPadding: const EdgeInsets.symmetric(vertical: 20),
+            contentPadding: const EdgeInsets.symmetric(vertical: 15),
           ),
         ),
       ],
@@ -150,111 +193,201 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildPrimaryAction() {
     return GestureDetector(
       onTap: () async {
-        if (_emailController.text.isEmpty || _passController.text.isEmpty) return;
+        // Validation check with trimming
+        if (_emailController.text.trim().isEmpty || _passController.text.trim().isEmpty) {
+          _showErrorSnackBar("CREDENTIALS REQUIRED");
+          return;
+        }
 
         setState(() => _isLoading = true);
-        final user = await _authService.signInWithEmail(_emailController.text, _passController.text);
 
-        if (user == null) {
-          setState(() => _isLoading = false);
-          // Show specifically why it failed using our new AuthService logic
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  backgroundColor: Colors.red.withValues(alpha: 0.8),
-                  content: Text(_authService.errorMessage,
-                      style: const TextStyle(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold))
-              )
-          );
+        try {
+          // Attempt Login with a timeout safety net
+          final user = await _authService.signInWithEmail(
+              _emailController.text.trim(),
+              _passController.text.trim()
+          ).timeout(const Duration(seconds: 15));
+
+          if (user == null) {
+            if (mounted) setState(() => _isLoading = false);
+            _showErrorSnackBar(_authService.errorMessage);
+          } else {
+            // SUCCESS: Force navigation to break the loading state
+            if (mounted) {
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.authWrapper, (route) => false);
+            }
+          }
+        } catch (e) {
+          // Catch timeout or unexpected errors
+          if (mounted) setState(() => _isLoading = false);
+          _showErrorSnackBar("CONNECTION TIMEOUT: CHECK INTERNET");
         }
-        // If successful, AuthWrapper will automatically transition
       },
       child: Container(
         width: double.infinity,
         height: 70,
         decoration: BoxDecoration(
-          color: luxuryGold,
+          color: luxuryGold.withValues(alpha: 0.9),
+          border: Border.all(color: luxuryGold, width: 1),
           boxShadow: [
-            BoxShadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 40, offset: const Offset(0, 10))
+            BoxShadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 30, offset: const Offset(0, 10))
           ],
         ),
-        child: const Center(
-          child: Text("AUTHENTICATE ACCESS",
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 11)),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Text(
+                "AUTHENTICATE ACCESS",
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 10)
+            ),
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.4), Colors.white.withValues(alpha: 0.0)],
+                    stops: const [0.0, 0.5, 1.0],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                ),
+              ).animate(onPlay: (c) => c.repeat(reverse: false))
+                  .slideX(begin: -2.0, end: 2.0, duration: 3.seconds, curve: Curves.easeInOutSine),
+            ),
+          ],
         ),
       ),
-    ).animate().fadeIn(delay: 400.ms);
+    ).animate().fadeIn(duration: 800.ms, delay: 800.ms);
   }
 
-  Widget _buildSocialDiscovery() {
-    return Center(
-      child: Column(
-        children: [
-          const Text("OR DISCOVER VIA",
-              style: TextStyle(color: Colors.white12, fontSize: 8, letterSpacing: 5)),
-          const SizedBox(height: 25),
-          GestureDetector(
-            onTap: () async {
-              setState(() => _isLoading = true);
-              final user = await _authService.signInWithGoogle();
-              if (user == null) {
-                setState(() => _isLoading = false);
-              }
-            },
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        behavior: SnackBarBehavior.floating,
+        content: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.02),
-                border: Border.all(color: Colors.white10),
+                color: Colors.redAccent.withValues(alpha: 0.1),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 0.5),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset('assets/images/google_icon.png', width: 18),
-                  const SizedBox(width: 20),
-                  const Text("GOOGLE IDENTITY",
-                      style: TextStyle(color: Colors.white70, fontSize: 9, letterSpacing: 3, fontWeight: FontWeight.bold)),
-                ],
+              child: Text(
+                message.toUpperCase(),
+                style: const TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 2, fontWeight: FontWeight.bold),
               ),
             ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 600.ms);
-  }
-
-  Widget _buildBottomNavigation() {
-    return Center(
-      child: GestureDetector(
-        onTap: () => Navigator.pushNamed(context, AppRoutes.signup),
-        child: RichText(
-          text: TextSpan(
-            text: "NOT A MEMBER? ",
-            style: const TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 3),
-            children: [
-              TextSpan(text: "JOIN THE LEGACY",
-                  style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900)),
-            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildGlobalLoader() {
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.8),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildSocialDiscovery() {
+    return Center(
+      child: Column(
+        children: [
+          const Text(
+              "OR DISCOVER VIA",
+              style: TextStyle(color: Colors.white24, fontSize: 7, letterSpacing: 6, fontWeight: FontWeight.bold)
+          ),
+          const SizedBox(height: 25),
+          GestureDetector(
+            onTap: () async {
+              setState(() => _isLoading = true);
+              try {
+                final user = await _authService.signInWithGoogle().timeout(const Duration(seconds: 15));
+                if (user == null && mounted) {
+                  setState(() => _isLoading = false);
+                  _showErrorSnackBar("GOOGLE AUTHENTICATION FAILED");
+                } else if (user != null && mounted) {
+                  Navigator.pushNamedAndRemoveUntil(context, AppRoutes.authWrapper, (route) => false);
+                }
+              } catch(e) {
+                if (mounted) setState(() => _isLoading = false);
+                _showErrorSnackBar("CONNECTION TIMEOUT");
+              }
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.02),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset('assets/images/google_icon.png', width: 16),
+                  const SizedBox(width: 20),
+                  const Text(
+                      "GOOGLE IDENTITY",
+                      style: TextStyle(color: Colors.white70, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.w900)
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 800.ms, delay: 1000.ms);
+  }
+
+  Widget _buildBottomNavigation() {
+    return Center(
+      child: GestureDetector(
+        onTap: () => Navigator.pushNamed(context, AppRoutes.signup),
+        behavior: HitTestBehavior.opaque,
+        child: RichText(
+          text: TextSpan(
+            text: "NOT A MEMBER?  ",
+            style: const TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold),
             children: [
-              CircularProgressIndicator(color: luxuryGold, strokeWidth: 1),
-              const SizedBox(height: 20),
-              const Text("VERIFYING IDENTITY",
-                  style: TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 5)),
+              TextSpan(
+                  text: "JOIN THE LEGACY",
+                  style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900)
+              ),
             ],
-          ).animate().scale(duration: 400.ms, curve: Curves.easeOut),
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 800.ms, delay: 1200.ms);
+  }
+
+  Widget _buildGlobalLoader() {
+    return Positioned.fill(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.85),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 50,
+                  height: 50,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CircularProgressIndicator(color: luxuryGold.withValues(alpha: 0.2), strokeWidth: 1, value: 1.0),
+                      CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5),
+                    ],
+                  ),
+                ).animate(onPlay: (c) => c.repeat())
+                    .scale(duration: 1.5.seconds, begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), curve: Curves.easeInOutSine),
+
+                const SizedBox(height: 40),
+
+                const Text(
+                    "VERIFYING IDENTITY",
+                    style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 6, fontWeight: FontWeight.w900)
+                ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 1.seconds),
+              ],
+            ),
+          ),
         ),
       ),
     );
