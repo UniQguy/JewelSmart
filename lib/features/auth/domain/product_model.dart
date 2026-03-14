@@ -33,7 +33,9 @@ class Product {
   String get productId => id;
   String get imagePath => imageUrl;
   double get totalPayableAmount => price + makingCharges;
-  String get formattedPrice => "\$${price.toStringAsFixed(2)}";
+
+  // CRITICAL FIX: The Global Currency Standard is now permanently set to INR
+  String get formattedPrice => "₹${price.toStringAsFixed(2)}";
 
   Map<String, dynamic> toMap() {
     return {

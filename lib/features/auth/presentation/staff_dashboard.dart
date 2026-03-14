@@ -36,7 +36,7 @@ class _StaffDashboardState extends State<StaffDashboard> {
           SafeArea(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000), // Web Scaler
+                constraints: const BoxConstraints(maxWidth: 800), // Web Scaler matching Admin Dashboard
                 child: CustomScrollView(
                   physics: const BouncingScrollPhysics(),
                   slivers: [
@@ -183,7 +183,6 @@ class _StaffDashboardState extends State<StaffDashboard> {
     );
   }
 
-  // CRITICAL UPDATE: Streams real-time counts from Firestore
   Widget _buildStreamMetricCard(String label, String collectionPath, IconData icon, {bool isAlert = false, VoidCallback? onTap}) {
     return StreamBuilder<AggregateQuerySnapshot>(
         stream: FirebaseFirestore.instance.collection(collectionPath).count().get().asStream(),
@@ -244,14 +243,14 @@ class _StaffDashboardState extends State<StaffDashboard> {
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Column(
         children: [
-          // HIGHLIGHTED ACTION: ADD PRODUCT (Currently fully operational)
+          // HIGHLIGHTED ACTION 1: ADD PRODUCT
           GestureDetector(
             onTap: () {
               HapticFeedback.mediumImpact();
               Navigator.pushNamed(context, AppRoutes.addProduct);
             },
             child: Container(
-              margin: const EdgeInsets.only(bottom: 25),
+              margin: const EdgeInsets.only(bottom: 15),
               decoration: BoxDecoration(
                 color: luxuryGold.withValues(alpha: 0.1),
                 border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
@@ -285,16 +284,56 @@ class _StaffDashboardState extends State<StaffDashboard> {
             ),
           ).animate().fadeIn(duration: 800.ms, delay: 400.ms),
 
-          // Standard Actions (Secured with Safe Placeholders)
-          _buildActionTile(context, "PROCESS INCOMING STOCK", Icons.add_circle_outline, Colors.white54, destination: const SecureModulePlaceholder(title: "INCOMING LOGISTICS")),
-          _buildActionTile(context, "RECORD STOCK OUT", Icons.remove_circle_outline, Colors.white54, destination: const SecureModulePlaceholder(title: "DISPATCH LOGISTICS")),
+          // HIGHLIGHTED ACTION 2: THE MASTER KEY (Manage Inventory)
+          // Replaces the old dead placeholders with visual live management
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              // Routes Staff to the storefront so they can long-press and adjust stock.
+              Navigator.pushNamed(context, AppRoutes.category, arguments: "ALL EXHIBITS");
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 25),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.5),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 5)],
+              ),
+              child: ClipRRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(25),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.display_settings_outlined, color: Colors.white, size: 28),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("MANAGE INVENTORY", style: TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 4, fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 4),
+                              Text("Long-press items in the vault to update live stock", style: TextStyle(color: luxuryGold.withValues(alpha: 0.8), fontSize: 8, letterSpacing: 2)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios_rounded, color: Colors.white.withValues(alpha: 0.3), size: 14),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ).animate().fadeIn(duration: 800.ms, delay: 500.ms),
+
+          // INVOICE LOGISTICS
           _buildActionTile(context, "GENERATE CLIENT INVOICE", Icons.receipt_long_outlined, Colors.white54, destination: const GenerateInvoiceScreen()),
         ],
       ),
     );
   }
 
-  // FIXED: Replaced string route matching with Widget destination routing
   Widget _buildActionTile(BuildContext context, String label, IconData icon, Color color, {Widget? destination}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -318,68 +357,6 @@ class _StaffDashboardState extends State<StaffDashboard> {
             },
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// A highly polished buffer screen that prevents the app from crashing before we build the actual Staff sub-modules.
-class SecureModulePlaceholder extends StatelessWidget {
-  final String title;
-  const SecureModulePlaceholder({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final Color luxuryGold = const Color(0xFFD4AF37);
-    return Scaffold(
-      backgroundColor: Colors.black,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
-          onPressed: () {
-            HapticFeedback.selectionClick();
-            Navigator.pop(context);
-          },
-        ),
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0, -0.2),
-                  radius: 1.5,
-                  colors: [luxuryGold.withValues(alpha: 0.1), Colors.black],
-                ),
-              ),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 50, height: 50,
-                  child: CircularProgressIndicator(color: luxuryGold.withValues(alpha: 0.5), strokeWidth: 1.5),
-                ).animate(onPlay: (c) => c.repeat()).rotate(duration: 2.seconds),
-                const SizedBox(height: 40),
-                Text(
-                  "INITIALIZING STAFF PROTOCOL",
-                  style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 8, fontWeight: FontWeight.w900),
-                ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 1.seconds),
-                const SizedBox(height: 10),
-                Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(color: Colors.white38, fontSize: 7, letterSpacing: 6, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

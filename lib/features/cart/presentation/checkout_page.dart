@@ -5,12 +5,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../../core/router/app_routes.dart';
 import '../providers/cart_provider.dart';
+import '../../auth/presentation/edit_profile_screen.dart'; // CRITICAL: Route to Address Terminal
 
 /// THE SECURITY PROTOCOL (CHECKOUT)
-/// Engineered as a high-caliber authentication interface with biometric-style 3D processing.
-/// FULLY WIRED: Writes directly to Firestore and clears the local Cart.
+/// Engineered with the Address Security Lock and Biometric Processing.
 class CheckoutPage extends ConsumerStatefulWidget {
   const CheckoutPage({super.key});
 
@@ -38,8 +39,6 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
     super.dispose();
   }
 
-  // CRITICAL FIX: The Phantom Checkout Bug is resolved.
-  // This function now securely transacts with the live Firestore database.
   Future<void> _handlePayment() async {
     final cartItems = ref.read(cartProvider);
     final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -49,39 +48,43 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
       return;
     }
 
+    // --- DOUBLE BACKEND SECURITY LOCK ---
+    // Fetches the user doc to ensure they didn't bypass the UI block
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    final address = userDoc.data()?['address']?.toString().trim() ?? '';
+
+    if (address.isEmpty) {
+      HapticFeedback.heavyImpact();
+      _showErrorNotification("TRANSACTION BLOCKED: MISSING COORDINATES");
+      return;
+    }
+
     HapticFeedback.heavyImpact(); // Tactile authorization
     setState(() => _isProcessing = true);
     _scanController.repeat(reverse: true);
 
     try {
-      // 1. Initialize a Firestore Batch to process the entire cart securely
       final batch = FirebaseFirestore.instance.batch();
 
       for (var item in cartItems) {
         final docRef = FirebaseFirestore.instance.collection('purchases').doc();
 
-        // Exact Indian Market Math: Calculate the final price including the 3% GST
         final double itemBaseTotal = item.product.totalPayableAmount * item.quantity;
         final double itemFinalTotal = itemBaseTotal + (itemBaseTotal * 0.03);
 
         batch.set(docRef, {
           'userId': userId,
           'productId': item.product.id,
-          'productName': item.product.title, // Exact map to the Admin/Staff dashboards
+          'productName': item.product.title,
           'quantity': item.quantity,
-          'amountPaid': itemFinalTotal,      // The exact Rupee value processed
-          'status': 'PROCESSING',            // Initial Logistics State
+          'amountPaid': itemFinalTotal,
+          'status': 'PROCESSING',
           'purchaseDate': FieldValue.serverTimestamp(),
         });
       }
 
-      // 2. Commit the payload to the Cloud Matrix
       await batch.commit();
-
-      // 3. Clear the Cart securely using the Riverpod Provider
       ref.read(cartProvider.notifier).clearCart();
-
-      // 4. Immersive Security Delay (UX)
       await Future.delayed(const Duration(seconds: 2));
 
       if (mounted) {
@@ -132,42 +135,60 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
   @override
   Widget build(BuildContext context) {
     final totalAmount = ref.watch(cartTotalProvider);
+    final userId = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. Deep Spatial Background
           _buildSecurityBackground(),
 
-          // 2. Main Interface (Web Scaled)
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 30),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildBackButton(),
-                      const SizedBox(height: 40),
-                      _buildBrandHeroText(),
-                      const SizedBox(height: 60),
-                      _buildSummaryLedger(totalAmount),
-                      const SizedBox(height: 60),
-                      _buildSecureAction(),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          if (userId != null)
+          // LIVE IDENTITY STREAM: Actively checks for the Address
+            StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance.collection('users').doc(userId).snapshots(),
+                builder: (context, snapshot) {
+                  String address = "FETCHING COORDINATES...";
+                  bool hasAddress = false;
 
-          // 3. Cinematic Processing Overlay
+                  if (snapshot.hasData && snapshot.data!.exists) {
+                    final data = snapshot.data!.data() as Map<String, dynamic>?;
+                    if (data != null && data['address'] != null && data['address'].toString().trim().isNotEmpty) {
+                      address = data['address'].toString().toUpperCase();
+                      hasAddress = true;
+                    } else {
+                      address = "ACTION REQUIRED: UPDATE IDENTITY PROFILE";
+                    }
+                  }
+
+                  return SafeArea(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 600),
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 30),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 20),
+                              _buildBackButton(),
+                              const SizedBox(height: 40),
+                              _buildBrandHeroText(),
+                              const SizedBox(height: 60),
+                              _buildSummaryLedger(totalAmount, address, hasAddress),
+                              const SizedBox(height: 60),
+                              _buildSecureAction(hasAddress),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+            ),
+
           if (_isProcessing) _buildProcessingOverlay(),
         ],
       ),
@@ -183,16 +204,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
               gradient: RadialGradient(
                 center: const Alignment(0, -0.3),
                 radius: 1.2,
-                colors: [
-                  luxuryGold.withValues(alpha: 0.08),
-                  Colors.black,
-                ],
+                colors: [luxuryGold.withValues(alpha: 0.08), Colors.black],
               ),
             ),
           ).animate(onPlay: (c) => c.repeat(reverse: true))
               .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 8.seconds),
 
-          // Faint security grid
           CustomPaint(
             size: Size.infinite,
             painter: _SecurityGridPainter(color: Colors.white.withValues(alpha: 0.02)),
@@ -225,28 +242,14 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-            "SECURITY PROTOCOL",
-            style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 8, fontWeight: FontWeight.w900)
-        ),
+        const Text("SECURITY PROTOCOL", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 8, fontWeight: FontWeight.w900)),
         const SizedBox(height: 20),
-        Text(
-            "FINALIZE THE\nACQUISITION",
-            style: TextStyle(
-                color: luxuryGold,
-                fontSize: 42,
-                fontWeight: FontWeight.w100,
-                height: 1.1,
-                letterSpacing: -1,
-                shadows: [Shadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 20)]
-            )
-        ),
+        Text("FINALIZE THE\nACQUISITION", style: TextStyle(color: luxuryGold, fontSize: 42, fontWeight: FontWeight.w100, height: 1.1, letterSpacing: -1, shadows: [Shadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 20)])),
       ],
     ).animate().fadeIn(duration: 800.ms).slideX(begin: -0.1, end: 0);
   }
 
-  // Real Indian Tax Logic (3% GST) + Rupee Currency
-  Widget _buildSummaryLedger(double total) {
+  Widget _buildSummaryLedger(double total, String address, bool hasAddress) {
     final double gstAmount = total * 0.03;
     final double finalAmount = total + gstAmount;
 
@@ -259,9 +262,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
           decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.02),
               border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 10)
-              ]
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 10)]
           ),
           child: Column(
             children: [
@@ -271,7 +272,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
               const SizedBox(height: 25),
               _ledgerRow("SECURITY & INSURANCE", "INCLUDED"),
               const SizedBox(height: 25),
-              _ledgerRow("BOUTIQUE DELIVERY", "INCLUDED"),
+
+              // NEW: The Live Delivery Coordinates Check
+              _ledgerRow("DESTINATION", address, isAlert: !hasAddress, isMultiline: true),
+
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 35),
                 child: Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
@@ -284,61 +288,73 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
     ).animate().fadeIn(duration: 800.ms, delay: 400.ms).slideY(begin: 0.1, end: 0);
   }
 
-  Widget _ledgerRow(String label, String value, {bool isGold = false}) {
+  Widget _ledgerRow(String label, String value, {bool isGold = false, bool isAlert = false, bool isMultiline = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
-        Text(
-            label,
-            style: TextStyle(color: isGold ? Colors.white60 : Colors.white38, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold)
-        ),
-        Text(
-            value,
-            style: TextStyle(
-                color: isGold ? luxuryGold : Colors.white,
-                fontSize: isGold ? 24 : 12,
+        Text(label, style: TextStyle(color: isGold ? Colors.white60 : Colors.white38, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold)),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: isAlert ? Colors.redAccent : (isGold ? luxuryGold : Colors.white),
+                fontSize: isGold ? 24 : (isMultiline ? 9 : 12),
                 fontWeight: isGold ? FontWeight.w300 : FontWeight.w500,
-                letterSpacing: 2
-            )
+                letterSpacing: 2,
+                height: 1.4,
+              )
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildSecureAction() {
+  // MUTATING BUTTON: Changes based on Address Clearance
+  Widget _buildSecureAction(bool hasAddress) {
     return GestureDetector(
-      onTap: _handlePayment,
+      onTap: () {
+        if (hasAddress) {
+          _handlePayment();
+        } else {
+          HapticFeedback.heavyImpact();
+          // Teleports user to Edit Profile to set coordinates
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
+        }
+      },
       child: Container(
         width: double.infinity,
         height: 75,
         decoration: BoxDecoration(
-            color: luxuryGold.withValues(alpha: 0.9),
-            border: Border.all(color: luxuryGold, width: 1),
+            color: hasAddress ? luxuryGold.withValues(alpha: 0.9) : Colors.redAccent.withValues(alpha: 0.1),
+            border: Border.all(color: hasAddress ? luxuryGold : Colors.redAccent.withValues(alpha: 0.5), width: 1),
             boxShadow: [
-              BoxShadow(color: luxuryGold.withValues(alpha: 0.15), blurRadius: 30, spreadRadius: 5)
+              if (hasAddress) BoxShadow(color: luxuryGold.withValues(alpha: 0.15), blurRadius: 30, spreadRadius: 5)
             ]
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            const Text(
-                "AUTHENTICATE & PURCHASE",
-                style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 10)
+            Text(
+                hasAddress ? "AUTHENTICATE & PURCHASE" : "SET DELIVERY COORDINATES",
+                style: TextStyle(color: hasAddress ? Colors.black : Colors.redAccent, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 10)
             ),
-            // Sweeping light effect across the button
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.4), Colors.white.withValues(alpha: 0.0)],
-                    stops: const [0.0, 0.5, 1.0],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
+            if (hasAddress)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.4), Colors.white.withValues(alpha: 0.0)],
+                      stops: const [0.0, 0.5, 1.0],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
                   ),
-                ),
-              ).animate(onPlay: (c) => c.repeat(reverse: false))
-                  .slideX(begin: -2.0, end: 2.0, duration: 3.seconds, curve: Curves.easeInOutSine),
-            ),
+                ).animate(onPlay: (c) => c.repeat(reverse: false))
+                    .slideX(begin: -2.0, end: 2.0, duration: 3.seconds, curve: Curves.easeInOutSine),
+              ),
           ],
         ),
       ),
@@ -359,47 +375,20 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Biometric / Radar Scan Simulation
                     SizedBox(
-                      width: 120,
-                      height: 120,
+                      width: 120, height: 120,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: luxuryGold.withValues(alpha: 0.2), width: 1),
-                            ),
-                          ),
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
-                            ),
-                          ),
-                          Icon(Icons.fingerprint_rounded, color: luxuryGold.withValues(alpha: 0.8), size: 40)
-                              .animate(onPlay: (c) => c.repeat(reverse: true))
-                              .shimmer(duration: 2.seconds, color: Colors.white),
-
-                          // Rotating Scanning Ring
+                          Container(decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: luxuryGold.withValues(alpha: 0.2), width: 1))),
+                          Container(width: 80, height: 80, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5))),
+                          Icon(Icons.fingerprint_rounded, color: luxuryGold.withValues(alpha: 0.8), size: 40).animate(onPlay: (c) => c.repeat(reverse: true)).shimmer(duration: 2.seconds, color: Colors.white),
                           AnimatedBuilder(
                             animation: _scanController,
                             builder: (context, child) {
                               return Transform.rotate(
                                 angle: _scanController.value * 2 * 3.14159,
-                                child: Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border(
-                                      top: BorderSide(color: luxuryGold, width: 2),
-                                    ),
-                                  ),
-                                ),
+                                child: Container(width: 120, height: 120, decoration: BoxDecoration(shape: BoxShape.circle, border: Border(top: BorderSide(color: luxuryGold, width: 2)))),
                               );
                             },
                           ),
@@ -407,11 +396,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
                       ),
                     ),
                     const SizedBox(height: 50),
-                    const Text(
-                        "VERIFYING SECURE\nPAYMENT GATEWAY",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white60, fontSize: 9, letterSpacing: 6, fontWeight: FontWeight.w900, height: 1.5)
-                    ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 1.seconds),
+                    const Text("VERIFYING SECURE\nPAYMENT GATEWAY", textAlign: TextAlign.center, style: TextStyle(color: Colors.white60, fontSize: 9, letterSpacing: 6, fontWeight: FontWeight.w900, height: 1.5)).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 1.seconds),
                   ],
                 ),
               ),
@@ -423,19 +408,14 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
   }
 }
 
-/// Custom Painter to draw a faint security grid in the background
 class _SecurityGridPainter extends CustomPainter {
   final Color color;
   _SecurityGridPainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 0.5;
-
+    final paint = Paint()..color = color..strokeWidth = 0.5;
     const double spacing = 40.0;
-
     for (double i = 0; i < size.width; i += spacing) {
       canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
     }

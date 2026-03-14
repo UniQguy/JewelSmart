@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // CRITICAL: Haptic Feedback added
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -35,32 +36,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
           // 2. Main Executive Interface
           SafeArea(
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 10),
-                      _buildHeader(context),
-                      const SizedBox(height: 35),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800), // Web Scaler applied
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 10),
+                          _buildHeader(context),
+                          const SizedBox(height: 35),
 
-                      _buildSectionLabel("LIVE EXECUTIVE OVERVIEW"),
-                      const SizedBox(height: 10),
-                      _buildLiveKPIGrid(), // Now strictly connected to Cloud Data (INR)
+                          _buildSectionLabel("LIVE EXECUTIVE OVERVIEW"),
+                          const SizedBox(height: 10),
+                          _buildLiveKPIGrid(),
 
-                      const SizedBox(height: 40),
+                          const SizedBox(height: 40),
 
-                      _buildSectionLabel("VAULT OPERATIONS"),
-                      const SizedBox(height: 10),
-                      _buildActionList(context),
+                          _buildSectionLabel("VAULT OPERATIONS"),
+                          const SizedBox(height: 10),
+                          _buildActionList(context),
 
-                      const SizedBox(height: 80), // Bottom buffer
-                    ],
-                  ),
+                          const SizedBox(height: 80), // Bottom buffer
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -117,6 +123,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               child: IconButton(
                 icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
                 onPressed: () async {
+                  HapticFeedback.heavyImpact();
                   await AuthService().signOut();
                   if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
                 },
@@ -142,7 +149,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ).animate().fadeIn(delay: 200.ms);
   }
 
-  /// CRITICAL UPDATE: Rupee formatting applied
   Widget _buildLiveKPIGrid() {
     return StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('purchases').snapshots(),
@@ -164,7 +170,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             }
           }
 
-          // Format revenue to look premium in INR (e.g., ₹1.4K, ₹2.5M)
           String formattedRevenue = "₹0.00";
           if (totalRevenue >= 1000000) {
             formattedRevenue = "₹${(totalRevenue / 1000000).toStringAsFixed(1)}M";
@@ -187,8 +192,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 children: [
                   _buildGlassMetricCard("TOTAL VAULT VALUE", formattedRevenue, Icons.account_balance_wallet_outlined, isLoading: !snapshot.hasData),
                   _buildGlassMetricCard("PENDING ORDERS", "$pendingOrders", Icons.inventory_2_outlined, isLoading: !snapshot.hasData),
-                  _buildStreamMetricCard("ACTIVE ACCOUNTS", 'users', Icons.people_outline), // Streams user count
-                  _buildStreamMetricCard("TOTAL ASSETS", 'products', Icons.diamond_outlined), // Streams product count
+                  _buildStreamMetricCard("ACTIVE ACCOUNTS", 'users', Icons.people_outline),
+                  _buildStreamMetricCard("TOTAL ASSETS", 'products', Icons.diamond_outlined),
                 ],
               ),
             ),
@@ -259,11 +264,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Column(
         children: [
-          // HIGHLIGHTED ACTION: ADD PRODUCT
+          // HIGHLIGHTED ACTION 1: ADD PRODUCT
           GestureDetector(
-            onTap: () => Navigator.pushNamed(context, AppRoutes.addProduct),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              Navigator.pushNamed(context, AppRoutes.addProduct);
+            },
             child: Container(
-              margin: const EdgeInsets.only(bottom: 25),
+              margin: const EdgeInsets.only(bottom: 15),
               decoration: BoxDecoration(
                 color: luxuryGold.withValues(alpha: 0.1),
                 border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
@@ -297,7 +305,48 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ).animate().fadeIn(duration: 800.ms, delay: 400.ms),
 
-          // FIXED: Buttons are no longer hardcoded dead links
+          // HIGHLIGHTED ACTION 2: THE MASTER KEY (Manage Inventory)
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              // This is the Master Key. It routes the Admin to the storefront so they can long-press and delete.
+              Navigator.pushNamed(context, AppRoutes.category, arguments: "ALL EXHIBITS");
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 25),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.5),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 5)],
+              ),
+              child: ClipRRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(25),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.display_settings_outlined, color: Colors.white, size: 28),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("MANAGE INVENTORY", style: TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 4, fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 4),
+                              Text("Long-press items in the vault to delete or restock", style: TextStyle(color: luxuryGold.withValues(alpha: 0.8), fontSize: 8, letterSpacing: 2)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios_rounded, color: Colors.white.withValues(alpha: 0.3), size: 14),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ).animate().fadeIn(duration: 800.ms, delay: 500.ms),
+
           _buildActionTile(context, "MANAGE USERS & ROLES", Icons.admin_panel_settings_outlined, destination: const ManageUsersScreen()),
           _buildActionTile(context, "VIEW ACTIVE ORDERS", Icons.assignment_outlined, destination: const ActiveOrdersScreen()),
           _buildActionTile(context, "GLOBAL SYSTEM SETTINGS", Icons.settings_applications_outlined, destination: const SettingsScreen()),
@@ -306,7 +355,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // UPDATED: Accepts a Widget destination instead of throwing a snackbar
   Widget _buildActionTile(BuildContext context, String label, IconData icon, {Widget? destination}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -323,6 +371,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             title: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9, letterSpacing: 4, fontWeight: FontWeight.w600)),
             trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 12),
             onTap: () {
+              HapticFeedback.selectionClick();
               if (destination != null) {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => destination));
               } else {
@@ -336,65 +385,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             },
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// A highly polished buffer screen that prevents the app from crashing before we build the actual databases.
-class SecureModulePlaceholder extends StatelessWidget {
-  final String title;
-  const SecureModulePlaceholder({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final Color luxuryGold = const Color(0xFFD4AF37);
-    return Scaffold(
-      backgroundColor: Colors.black,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0, -0.2),
-                  radius: 1.5,
-                  colors: [luxuryGold.withValues(alpha: 0.1), Colors.black],
-                ),
-              ),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 50, height: 50,
-                  child: CircularProgressIndicator(color: luxuryGold.withValues(alpha: 0.5), strokeWidth: 1.5),
-                ).animate(onPlay: (c) => c.repeat()).rotate(duration: 2.seconds),
-                const SizedBox(height: 40),
-                Text(
-                  "INITIALIZING MODULE",
-                  style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 8, fontWeight: FontWeight.w900),
-                ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 1.seconds),
-                const SizedBox(height: 10),
-                Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(color: Colors.white38, fontSize: 7, letterSpacing: 6, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
