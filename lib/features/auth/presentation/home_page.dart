@@ -1,34 +1,23 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
-// 100% Correct Relative Imports
 import '../../../core/router/app_routes.dart';
 import '../domain/product_model.dart';
+import '../providers/product_provider.dart';
 import 'widgets/luxury_product_card.dart';
-import '../domain/product_model.dart';
 
-final List<Product> mockProducts = [
-  Product(
-    id: "1",
-    title: "EMERALD HEIRLOOM",
-    price: 12500,
-    description: "A timeless masterpiece.",
-    category: "RINGS",
-    imageUrl: "assets/products/ring_1.jpg", // Ensure paths are correct
-    createdAt: DateTime.now(),
-  ),
-];
 /// THE DISCOVERY STUDIO (HOME)
-/// Stripped of local navigation to integrate seamlessly with MainWrapper's 3D Shell.
-class HomePage extends StatefulWidget {
+/// Engineered with Responsive Web Scaling and a live Firestore data stream.
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMixin {
   final Color luxuryGold = const Color(0xFFD4AF37);
   final ScrollController _scrollController = ScrollController();
 
@@ -58,7 +47,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // CRITICAL: Transparent background lets MainWrapper's 3D depth show through
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       appBar: _buildLiquidAppBar(),
@@ -79,13 +67,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         children: [
           _buildPerspectiveHero(),
           const SizedBox(height: 40),
-          _buildSectionLabel("CURATED COLLECTIONS"),
-          _buildDynamicCategoryBar(),
-          const SizedBox(height: 50),
-          _buildSectionLabel("THE 2026 EXHIBIT"),
-          _buildStaggeredGallery(),
-          // Added 120px padding to ensure the last items clear the MainWrapper's Glass Dock
-          const SizedBox(height: 120),
+
+          // WEB SCALER: Constraining the width of the content on ultra-wide screens
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1400),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionLabel("CURATED COLLECTIONS"),
+                  _buildDynamicCategoryBar(),
+                  const SizedBox(height: 50),
+                  _buildSectionLabel("THE 2026 EXHIBIT"),
+
+                  // The Live Responsive Database Grid
+                  _buildStaggeredGallery(),
+
+                  const SizedBox(height: 120), // Padding for the Navigation Dock
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -111,9 +113,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     letterSpacing: 18 * (1 - opacity).clamp(0.5, 1.0)
                 )
             ),
-            // FIXED: Removed the local Search icon.
-            // Navigation should occur strictly through the MainWrapper's floating dock
-            // to preserve the 3D spatial illusion and prevent the "white screen glitch".
           ),
         ),
       ),
@@ -121,8 +120,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildPerspectiveHero() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    // Cap the hero height on massive desktop monitors to preserve aspect ratio
+    final heroHeight = screenHeight > 1000 ? 800.0 : screenHeight * 0.85;
+
     return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: heroHeight,
       width: double.infinity,
       child: Stack(
         children: [
@@ -131,10 +134,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: Transform.scale(
               scale: 1.2,
               child: Image.asset(
-                  'assets/images/login_bg.jpg',
-                  fit: BoxFit.cover,
-                  height: double.infinity,
-                  width: double.infinity
+                'assets/images/login_bg.jpg',
+                fit: BoxFit.cover,
+                height: double.infinity,
+                width: double.infinity,
+                errorBuilder: (context, error, stackTrace) => Container(color: Colors.black),
               ),
             ),
           ),
@@ -147,14 +151,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   Colors.black.withValues(alpha: 0.1),
                   Colors.transparent,
                   Colors.black.withValues(alpha: 0.8),
-                  Colors.transparent // Fades to transparent to merge with MainWrapper
+                  Colors.transparent
                 ],
               ),
             ),
           ),
           Positioned(
             bottom: 120,
-            left: 30,
+            left: MediaQuery.of(context).size.width > 1400 ? (MediaQuery.of(context).size.width - 1400) / 2 + 30 : 30, // Responsive alignment
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -162,7 +166,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 const SizedBox(height: 15),
                 const Text("ETHEREAL\nRADIANCE", style: TextStyle(color: Colors.white, fontSize: 62, fontWeight: FontWeight.w100, height: 0.85, letterSpacing: -2)),
                 const SizedBox(height: 35),
-                _buildCinematicButton("EXPLORE THE VAULT"),
+                // FIXED: Wired the hero button to push to the 'All Exhibits' category
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.category, arguments: "ALL EXHIBITS"),
+                  child: _buildCinematicButton("EXPLORE THE VAULT"),
+                ),
               ],
             ),
           ),
@@ -226,37 +234,83 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // CRITICAL UPDATE: Responsive Column Scaling based on Screen Width
   Widget _buildStaggeredGallery() {
-    return AnimationLimiter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 25),
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 30,
-            crossAxisSpacing: 25,
-            childAspectRatio: 0.58, // Synced to prevent UI overflow
-          ),
-          itemCount: mockProducts.length,
-          itemBuilder: (context, index) {
-            final product = mockProducts[index];
-            return AnimationConfiguration.staggeredGrid(
-              position: index,
-              duration: const Duration(milliseconds: 1000),
-              columnCount: 2,
-              child: SlideAnimation(
-                verticalOffset: 50,
-                child: FadeInAnimation(
-                  child: LuxuryProductCard(
-                    product: product,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: product),
-                  ),
-                ),
+    final productsAsyncValue = ref.watch(productStreamProvider);
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // INTELLIGENT SCALING: Mobile = 2, Tablet = 3, Small Desktop = 4, Ultrawide = 5
+    int crossAxisCount = 2;
+    if (screenWidth >= 1200) {
+      crossAxisCount = 5;
+    } else if (screenWidth >= 900) {
+      crossAxisCount = 4;
+    } else if (screenWidth >= 600) {
+      crossAxisCount = 3;
+    }
+
+    return productsAsyncValue.when(
+      data: (products) {
+        if (products.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: Text(
+                "THE VAULT IS CURRENTLY EMPTY",
+                style: TextStyle(color: Colors.white38, letterSpacing: 4, fontSize: 10, fontWeight: FontWeight.bold),
               ),
-            );
-          },
+            ),
+          );
+        }
+
+        return AnimationLimiter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 25),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount, // Applied responsive columns
+                mainAxisSpacing: 30,
+                crossAxisSpacing: 25,
+                childAspectRatio: 0.58,
+              ),
+              itemCount: products.length,
+              itemBuilder: (context, index) {
+                final product = products[index];
+                return AnimationConfiguration.staggeredGrid(
+                  position: index,
+                  duration: const Duration(milliseconds: 1000),
+                  columnCount: crossAxisCount,
+                  child: SlideAnimation(
+                    verticalOffset: 50,
+                    child: FadeInAnimation(
+                      child: LuxuryProductCard(
+                        product: product,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.productDetail, arguments: product),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+      loading: () => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40.0),
+          child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5),
+        ),
+      ),
+      error: (error, stack) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40.0),
+          child: Text(
+            "FAILED TO CONNECT TO VAULT SECURE CHANNEL",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.redAccent.withValues(alpha: 0.8), fontSize: 9, letterSpacing: 2),
+          ),
         ),
       ),
     );

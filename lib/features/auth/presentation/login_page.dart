@@ -1,11 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // CRITICAL: Added for Haptic Feedback
 import 'package:flutter_animate/flutter_animate.dart';
+
 import '../../../core/router/app_routes.dart';
 import '../data/auth_service.dart';
 
-/// THE PRIVATE VAULT ENTRANCE
-/// Engineered with volumetric lighting, spatial depth, and premium glassmorphic architecture.
+/// THE PRIVATE VAULT ENTRANCE (LOGIN)
+/// Engineered with volumetric lighting, spatial depth, and production-grade authentication flow.
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -16,17 +18,60 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final Color luxuryGold = const Color(0xFFD4AF37);
   final AuthService _authService = AuthService();
+
+  // Controllers
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
 
+  // Focus Nodes for production-grade keyboard routing
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passFocus = FocusNode();
+
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+
+  // 3D Terminal Physics
+  Offset _terminalTilt = Offset.zero;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passController.dispose();
+    _emailFocus.dispose();
+    _passFocus.dispose();
     super.dispose();
+  }
+
+  // Abstracted login logic for use by both the button and keyboard "Done" action
+  Future<void> _handleLogin() async {
+    HapticFeedback.mediumImpact(); // Tactile confirmation
+    FocusScope.of(context).unfocus();
+
+    if (_emailController.text.trim().isEmpty || _passController.text.trim().isEmpty) {
+      _showErrorSnackBar("CREDENTIALS REQUIRED");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final user = await _authService.signInWithEmail(
+          _emailController.text.trim(),
+          _passController.text.trim()
+      ).timeout(const Duration(seconds: 15));
+
+      if (user == null) {
+        if (mounted) setState(() => _isLoading = false);
+        _showErrorSnackBar(_authService.errorMessage);
+      } else {
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.authWrapper, (route) => false);
+        }
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      _showErrorSnackBar("CONNECTION TIMEOUT: CHECK INTERNET");
+    }
   }
 
   @override
@@ -42,27 +87,34 @@ class _LoginPageState extends State<LoginPage> {
 
           // 2. Main Interface
           SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 35),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 60),
-                  _buildBrandHeroText(),
-                  const SizedBox(height: 60),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500), // Web scaling protection
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 35),
+                  child: AutofillGroup( // CRITICAL: Enables Password Managers
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 40),
+                        _buildBrandHeroText(),
+                        const SizedBox(height: 60),
 
-                  // The Glassmorphic Authentication Terminal
-                  _buildAuthenticationTerminal(),
+                        // The Interactive 3D Authentication Terminal
+                        _buildInteractiveTerminal(),
 
-                  const SizedBox(height: 40),
-                  _buildPrimaryAction(),
-                  const SizedBox(height: 50),
-                  _buildSocialDiscovery(),
-                  const SizedBox(height: 60),
-                  _buildBottomNavigation(),
-                  const SizedBox(height: 40),
-                ],
+                        const SizedBox(height: 40),
+                        _buildPrimaryAction(),
+                        const SizedBox(height: 50),
+                        _buildSocialDiscovery(),
+                        const SizedBox(height: 60),
+                        _buildBottomNavigation(),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -79,6 +131,8 @@ class _LoginPageState extends State<LoginPage> {
       child: Image.asset(
         'assets/images/login_bg.jpg',
         fit: BoxFit.cover,
+        // Fallback color in case the asset is missing
+        errorBuilder: (context, error, stackTrace) => Container(color: Colors.black),
       ).animate(onPlay: (c) => c.repeat(reverse: true))
           .scale(
           begin: const Offset(1.05, 1.05),
@@ -132,33 +186,77 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildAuthenticationTerminal() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(0),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-        child: Container(
-          padding: const EdgeInsets.all(30),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.02),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 40, spreadRadius: 10)
-            ],
-          ),
-          child: Column(
-            children: [
-              _buildEditorialField("MEMBER IDENTIFICATION", Icons.alternate_email_rounded, _emailController),
-              const SizedBox(height: 35),
-              _buildEditorialField("VAULT SECURITY KEY", Icons.lock_person_outlined, _passController, isPass: true),
-            ],
+  Widget _buildInteractiveTerminal() {
+    return GestureDetector(
+      onPanUpdate: (details) => setState(() => _terminalTilt += details.delta),
+      onPanEnd: (_) => setState(() => _terminalTilt = Offset.zero),
+      child: Transform(
+        transform: Matrix4.identity()
+          ..setEntry(3, 2, 0.001)
+          ..rotateX(-_terminalTilt.dy * 0.002)
+          ..rotateY(_terminalTilt.dx * 0.002),
+        alignment: Alignment.center,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(0),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.02),
+                border: Border.all(
+                    color: luxuryGold.withValues(alpha: _terminalTilt == Offset.zero ? 0.3 : 0.6),
+                    width: 0.5
+                ),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 40, spreadRadius: 10),
+                  if (_terminalTilt != Offset.zero)
+                    BoxShadow(color: luxuryGold.withValues(alpha: 0.05), blurRadius: 40, spreadRadius: 5)
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildEditorialField(
+                    "MEMBER IDENTIFICATION",
+                    Icons.alternate_email_rounded,
+                    _emailController,
+                    focusNode: _emailFocus,
+                    nextFocus: _passFocus,
+                    hints: const [AutofillHints.email],
+                    inputType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 35),
+                  _buildEditorialField(
+                    "VAULT SECURITY KEY",
+                    Icons.lock_person_outlined,
+                    _passController,
+                    isPass: true,
+                    focusNode: _passFocus,
+                    hints: const [AutofillHints.password],
+                    onDone: _handleLogin,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     ).animate().fadeIn(duration: 800.ms, delay: 600.ms).slideY(begin: 0.1, end: 0);
   }
 
-  Widget _buildEditorialField(String label, IconData icon, TextEditingController controller, {bool isPass = false}) {
+  Widget _buildEditorialField(
+      String label,
+      IconData icon,
+      TextEditingController controller, {
+        bool isPass = false,
+        FocusNode? focusNode,
+        FocusNode? nextFocus,
+        Iterable<String>? hints,
+        TextInputType? inputType,
+        VoidCallback? onDone,
+      }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -168,7 +266,15 @@ class _LoginPageState extends State<LoginPage> {
         ),
         TextField(
           controller: controller,
+          focusNode: focusNode,
+          autofillHints: hints,
+          keyboardType: inputType,
           obscureText: isPass && !_isPasswordVisible,
+          textInputAction: onDone != null ? TextInputAction.done : TextInputAction.next,
+          onSubmitted: (_) {
+            if (nextFocus != null) FocusScope.of(context).requestFocus(nextFocus);
+            if (onDone != null) onDone();
+          },
           style: const TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 2, fontWeight: FontWeight.w300),
           cursorColor: luxuryGold,
           decoration: InputDecoration(
@@ -179,7 +285,10 @@ class _LoginPageState extends State<LoginPage> {
             prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
             suffixIcon: isPass ? IconButton(
               icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.white24, size: 16),
-              onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                setState(() => _isPasswordVisible = !_isPasswordVisible);
+              },
             ) : null,
             enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5)),
             focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: luxuryGold, width: 1)),
@@ -192,37 +301,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildPrimaryAction() {
     return GestureDetector(
-      onTap: () async {
-        // Validation check with trimming
-        if (_emailController.text.trim().isEmpty || _passController.text.trim().isEmpty) {
-          _showErrorSnackBar("CREDENTIALS REQUIRED");
-          return;
-        }
-
-        setState(() => _isLoading = true);
-
-        try {
-          // Attempt Login with a timeout safety net
-          final user = await _authService.signInWithEmail(
-              _emailController.text.trim(),
-              _passController.text.trim()
-          ).timeout(const Duration(seconds: 15));
-
-          if (user == null) {
-            if (mounted) setState(() => _isLoading = false);
-            _showErrorSnackBar(_authService.errorMessage);
-          } else {
-            // SUCCESS: Force navigation to break the loading state
-            if (mounted) {
-              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.authWrapper, (route) => false);
-            }
-          }
-        } catch (e) {
-          // Catch timeout or unexpected errors
-          if (mounted) setState(() => _isLoading = false);
-          _showErrorSnackBar("CONNECTION TIMEOUT: CHECK INTERNET");
-        }
-      },
+      onTap: _handleLogin,
       child: Container(
         width: double.infinity,
         height: 70,
@@ -260,6 +339,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showErrorSnackBar(String message) {
+    HapticFeedback.heavyImpact(); // Alert user to error
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: Colors.transparent,
@@ -296,6 +376,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(height: 25),
           GestureDetector(
             onTap: () async {
+              HapticFeedback.mediumImpact();
               setState(() => _isLoading = true);
               try {
                 final user = await _authService.signInWithGoogle().timeout(const Duration(seconds: 15));
@@ -320,7 +401,8 @@ class _LoginPageState extends State<LoginPage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset('assets/images/google_icon.png', width: 16),
+                  // Fallback icon applied gracefully in case of missing asset
+                  Image.asset('assets/images/google_icon.png', width: 16, errorBuilder: (c, e, s) => Icon(Icons.public, color: luxuryGold, size: 16)),
                   const SizedBox(width: 20),
                   const Text(
                       "GOOGLE IDENTITY",
@@ -338,7 +420,10 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildBottomNavigation() {
     return Center(
       child: GestureDetector(
-        onTap: () => Navigator.pushNamed(context, AppRoutes.signup),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          Navigator.pushNamed(context, AppRoutes.signup);
+        },
         behavior: HitTestBehavior.opaque,
         child: RichText(
           text: TextSpan(

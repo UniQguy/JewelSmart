@@ -1,28 +1,27 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // CRITICAL: Added Riverpod
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import 'widgets/luxury_product_card.dart';
 import '../../../core/router/app_routes.dart';
+// REMOVED: mock_data.dart
 import '../domain/product_model.dart';
+import '../providers/product_provider.dart'; // CRITICAL: The live data engine
 
 /// THE CURATED EXHIBIT (CATEGORY PAGE)
 /// Engineered with 3D spatial depth, sliver parallax, and cinematic staggering.
-class CategoryPage extends StatelessWidget {
+class CategoryPage extends ConsumerWidget { // UPGRADED to ConsumerWidget
   final String categoryName;
   const CategoryPage({super.key, required this.categoryName});
 
   final Color luxuryGold = const Color(0xFFD4AF37);
 
   @override
-  Widget build(BuildContext context) {
-    // 1. FILTER LOGIC: Matches category field in Jewelry_Product Table
-    final filteredProducts = categoryName.toUpperCase() == 'ALL EXHIBITS'
-        ? mockProducts
-        : mockProducts
-        .where((p) => p.category.toUpperCase() == categoryName.toUpperCase())
-        .toList();
+  Widget build(BuildContext context, WidgetRef ref) {
+    // CRITICAL: Connect to the Live Firestore Stream
+    final productsAsyncValue = ref.watch(productStreamProvider);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -38,45 +37,77 @@ class CategoryPage extends StatelessWidget {
               // HIGH-FASHION PARALLAX HEADER
               _buildSliverHeader(context),
 
-              // CONDITIONALLY RENDER GRID OR EMPTY STATE
-              filteredProducts.isEmpty
-                  ? SliverFillRemaining(
-                hasScrollBody: false,
-                child: _buildEmptyCollection(),
-              )
-                  : SliverPadding(
-                padding: const EdgeInsets.fromLTRB(25, 40, 25, 120),
-                sliver: AnimationLimiter(
-                  child: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 30, // Synced with SearchScreen
-                      crossAxisSpacing: 25, // Synced with SearchScreen
-                      childAspectRatio: 0.58, // Synced with SearchScreen for perfect rendering
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                        final product = filteredProducts[index];
-                        return AnimationConfiguration.staggeredGrid(
-                          position: index,
-                          duration: const Duration(milliseconds: 800),
-                          columnCount: 2,
-                          child: SlideAnimation(
-                            verticalOffset: 50.0,
-                            child: FadeInAnimation(
-                              child: LuxuryProductCard(
-                                product: product,
-                                onTap: () => Navigator.pushNamed(
-                                  context,
-                                  AppRoutes.productDetail,
-                                  arguments: product,
+              // Handle the Stream States (Data, Loading, Error) within the Slivers
+              productsAsyncValue.when(
+                data: (products) {
+                  // FILTER LOGIC: Matches category field against live Cloud Data
+                  final filteredProducts = categoryName.toUpperCase() == 'ALL EXHIBITS'
+                      ? products
+                      : products
+                      .where((p) => p.category.toUpperCase() == categoryName.toUpperCase())
+                      .toList();
+
+                  if (filteredProducts.isEmpty) {
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _buildEmptyCollection(),
+                    );
+                  }
+
+                  return SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(25, 40, 25, 120),
+                    sliver: AnimationLimiter(
+                      child: SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 30, // Synced with SearchScreen
+                          crossAxisSpacing: 25, // Synced with SearchScreen
+                          childAspectRatio: 0.58, // Synced with SearchScreen for perfect rendering
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                            final product = filteredProducts[index];
+                            return AnimationConfiguration.staggeredGrid(
+                              position: index,
+                              duration: const Duration(milliseconds: 800),
+                              columnCount: 2,
+                              child: SlideAnimation(
+                                verticalOffset: 50.0,
+                                child: FadeInAnimation(
+                                  child: LuxuryProductCard(
+                                    product: product,
+                                    onTap: () => Navigator.pushNamed(
+                                      context,
+                                      AppRoutes.productDetail,
+                                      arguments: product,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                        );
-                      },
-                      childCount: filteredProducts.length,
+                            );
+                          },
+                          childCount: filteredProducts.length,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                loading: () => SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5),
+                  ),
+                ),
+                error: (error, stack) => SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Text(
+                      "CONNECTION LOST",
+                      style: TextStyle(
+                        color: Colors.redAccent.withValues(alpha: 0.8),
+                        fontSize: 10,
+                        letterSpacing: 3,
+                      ),
                     ),
                   ),
                 ),
@@ -96,7 +127,7 @@ class CategoryPage extends StatelessWidget {
             center: const Alignment(0, -0.6),
             radius: 1.5,
             colors: [
-              luxuryGold.withOpacity(0.08),
+              luxuryGold.withValues(alpha: 0.08),
               Colors.black,
             ],
           ),
@@ -111,11 +142,11 @@ class CategoryPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.diamond_outlined, color: luxuryGold.withOpacity(0.15), size: 60)
+          Icon(Icons.diamond_outlined, color: luxuryGold.withValues(alpha: 0.15), size: 60)
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), duration: 2.seconds),
           const SizedBox(height: 30),
-          Text(
+          const Text(
             "COLLECTION COMING SOON",
             style: TextStyle(
               color: Colors.white38,
@@ -145,7 +176,7 @@ class CategoryPage extends StatelessWidget {
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
               onPressed: () => Navigator.pop(context),
               style: IconButton.styleFrom(
-                backgroundColor: Colors.black.withOpacity(0.2),
+                backgroundColor: Colors.black.withValues(alpha: 0.2),
               ),
             ),
           ),
@@ -161,8 +192,8 @@ class CategoryPage extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.2),
-                border: Border.all(color: Colors.white.withOpacity(0.05), width: 0.5),
+                color: Colors.black.withValues(alpha: 0.2),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
               ),
               child: Text(
                 categoryName.toUpperCase(),
@@ -171,7 +202,7 @@ class CategoryPage extends StatelessWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 10,
-                  shadows: [Shadow(color: Colors.black.withOpacity(0.8), blurRadius: 10)],
+                  shadows: [Shadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 10)],
                 ),
               ),
             ),
@@ -193,7 +224,7 @@ class CategoryPage extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.5),
+                    Colors.black.withValues(alpha: 0.5),
                     Colors.transparent,
                     Colors.black,
                   ],

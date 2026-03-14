@@ -1,15 +1,23 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/router/app_routes.dart';
+import '../../auth/data/auth_service.dart';
 
 /// THE COMMAND CENTER (ADMIN DASHBOARD)
-/// Engineered as a high-clearance executive terminal with spatial metrics.
-class AdminDashboard extends StatelessWidget {
+/// Engineered as a live, high-clearance executive terminal wired directly to the Firestore mainframe.
+class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
+  @override
+  State<AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends State<AdminDashboard> {
   final Color luxuryGold = const Color(0xFFD4AF37);
 
   @override
@@ -35,13 +43,13 @@ class AdminDashboard extends StatelessWidget {
                       _buildHeader(context),
                       const SizedBox(height: 35),
 
-                      _buildSectionLabel("EXECUTIVE OVERVIEW"),
+                      _buildSectionLabel("LIVE EXECUTIVE OVERVIEW"),
                       const SizedBox(height: 10),
-                      _buildKPIGrid(),
+                      _buildLiveKPIGrid(), // Now strictly connected to Cloud Data
 
                       const SizedBox(height: 40),
 
-                      _buildSectionLabel("SYSTEM ADMINISTRATION"),
+                      _buildSectionLabel("VAULT OPERATIONS"),
                       const SizedBox(height: 10),
                       _buildActionList(context),
 
@@ -86,7 +94,18 @@ class AdminDashboard extends StatelessWidget {
             children: [
               const Text("SECURE TERMINAL", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 6, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              Text("PRASHANT (ADMIN)", style: TextStyle(color: luxuryGold, fontSize: 16, letterSpacing: 4, fontWeight: FontWeight.w900)),
+              StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseAuth.instance.currentUser != null
+                      ? FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).snapshots()
+                      : const Stream.empty(),
+                  builder: (context, snapshot) {
+                    String name = "AUTHENTICATING...";
+                    if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
+                      name = snapshot.data!.get('name') ?? "ADMIN";
+                    }
+                    return Text("$name (ADMIN)".toUpperCase(), style: TextStyle(color: luxuryGold, fontSize: 16, letterSpacing: 4, fontWeight: FontWeight.w900));
+                  }
+              ),
             ],
           ),
           ClipOval(
@@ -94,7 +113,10 @@ class AdminDashboard extends StatelessWidget {
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: IconButton(
                 icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
-                onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false),
+                onPressed: () async {
+                  await AuthService().signOut();
+                  if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+                },
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.white.withValues(alpha: 0.05),
                   padding: const EdgeInsets.all(16),
@@ -117,51 +139,83 @@ class AdminDashboard extends StatelessWidget {
     ).animate().fadeIn(delay: 200.ms);
   }
 
-  Widget _buildKPIGrid() {
-    final kpis = [
-      {"label": "TOTAL REVENUE", "value": "\$1.4M", "icon": Icons.account_balance_wallet_outlined},
-      {"label": "ACTIVE USERS", "value": "1,248", "icon": Icons.people_outline},
-      {"label": "PENDING ORDERS", "value": "34", "icon": Icons.inventory_2_outlined},
-      {"label": "REPAIR QUEUE", "value": "12", "icon": Icons.build_circle_outlined},
-    ];
+  /// CRITICAL UPDATE: Rips out the hardcoded stats and calculates real values from Firestore
+  Widget _buildLiveKPIGrid() {
+    return StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('purchases').snapshots(),
+        builder: (context, snapshot) {
+          double totalRevenue = 0.0;
+          int pendingOrders = 0;
 
-    return AnimationLimiter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 25),
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 20,
-            crossAxisSpacing: 20,
-            childAspectRatio: 1.1,
-          ),
-          itemCount: kpis.length,
-          itemBuilder: (context, index) {
-            final kpi = kpis[index];
-            return AnimationConfiguration.staggeredGrid(
-              position: index,
-              duration: const Duration(milliseconds: 600),
-              columnCount: 2,
-              child: SlideAnimation(
-                verticalOffset: 40.0,
-                child: FadeInAnimation(
-                  child: _buildGlassMetricCard(
-                      kpi["label"] as String,
-                      kpi["value"] as String,
-                      kpi["icon"] as IconData
-                  ),
-                ),
+          if (snapshot.hasData) {
+            for (var doc in snapshot.data!.docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              final status = (data['status'] as String?)?.toUpperCase() ?? '';
+              final amount = (data['amountPaid'] ?? 0.0) as num;
+
+              if (status == 'SECURED' || status == 'DELIVERED') {
+                totalRevenue += amount.toDouble();
+              } else if (status == 'PROCESSING') {
+                pendingOrders++;
+              }
+            }
+          }
+
+          // Format revenue to look premium (e.g., $1.4K, $2.5M)
+          String formattedRevenue = "\$0.00";
+          if (totalRevenue >= 1000000) {
+            formattedRevenue = "\$${(totalRevenue / 1000000).toStringAsFixed(1)}M";
+          } else if (totalRevenue >= 1000) {
+            formattedRevenue = "\$${(totalRevenue / 1000).toStringAsFixed(1)}K";
+          } else {
+            formattedRevenue = "\$${totalRevenue.toStringAsFixed(0)}";
+          }
+
+          return AnimationLimiter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                mainAxisSpacing: 20,
+                crossAxisSpacing: 20,
+                childAspectRatio: 1.1,
+                children: [
+                  _buildGlassMetricCard("TOTAL VAULT VALUE", formattedRevenue, Icons.account_balance_wallet_outlined, isLoading: !snapshot.hasData),
+                  _buildGlassMetricCard("PENDING ORDERS", "$pendingOrders", Icons.inventory_2_outlined, isLoading: !snapshot.hasData),
+                  _buildStreamMetricCard("ACTIVE ACCOUNTS", 'users', Icons.people_outline), // Streams user count
+                  _buildStreamMetricCard("TOTAL ASSETS", 'products', Icons.diamond_outlined), // Streams product count
+                ],
               ),
-            );
-          },
-        ),
-      ),
+            ),
+          );
+        }
     );
   }
 
-  Widget _buildGlassMetricCard(String label, String value, IconData icon) {
+  // Helper to quickly count documents in a collection for KPIs
+  Widget _buildStreamMetricCard(String label, String collectionPath, IconData icon) {
+    return StreamBuilder<AggregateQuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection(collectionPath).count().get().asStream(),
+        builder: (context, snapshot) {
+          String value = "0";
+          bool isLoading = true;
+
+          if (snapshot.hasData) {
+            value = snapshot.data!.count.toString();
+            isLoading = false;
+          } else if (snapshot.hasError) {
+            value = "ERR";
+            isLoading = false;
+          }
+
+          return _buildGlassMetricCard(label, value, icon, isLoading: isLoading);
+        }
+    );
+  }
+
+  Widget _buildGlassMetricCard(String label, String value, IconData icon, {bool isLoading = false}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.02),
@@ -185,7 +239,9 @@ class AdminDashboard extends StatelessWidget {
                   children: [
                     Text(label, style: const TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 3, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 5),
-                    Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 2, fontWeight: FontWeight.w300)),
+                    isLoading
+                        ? SizedBox(height: 15, width: 15, child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5))
+                        : Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 2, fontWeight: FontWeight.w300)),
                   ],
                 ),
               ],
@@ -197,31 +253,58 @@ class AdminDashboard extends StatelessWidget {
   }
 
   Widget _buildActionList(BuildContext context) {
-    final actions = [
-      {"label": "MANAGE USERS & ROLES", "icon": Icons.admin_panel_settings_outlined, "route": ""},
-      {"label": "INVENTORY & VAULT CONTROL", "icon": Icons.diamond_outlined, "route": ""},
-      {"label": "GENERATE ANALYTICAL REPORTS", "icon": Icons.insert_chart_outlined, "route": ""},
-      {"label": "GLOBAL SYSTEM SETTINGS", "icon": Icons.settings_applications_outlined, "route": ""},
-    ];
-
-    return AnimationLimiter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 25),
-        child: Column(
-          children: AnimationConfiguration.toStaggeredList(
-            duration: const Duration(milliseconds: 600),
-            childAnimationBuilder: (widget) => SlideAnimation(
-              verticalOffset: 30.0,
-              child: FadeInAnimation(child: widget),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Column(
+        children: [
+          // HIGHLIGHTED ACTION: ADD PRODUCT
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, AppRoutes.addProduct),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 25),
+              decoration: BoxDecoration(
+                color: luxuryGold.withValues(alpha: 0.1),
+                border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
+                boxShadow: [BoxShadow(color: luxuryGold.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 5)],
+              ),
+              child: ClipRRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(25),
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_box_outlined, color: luxuryGold, size: 28),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("ADD NEW COLLECTION", style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 4, fontWeight: FontWeight.w900)),
+                              const SizedBox(height: 4),
+                              const Text("Upload a new 3D asset to the global vault", style: TextStyle(color: Colors.white54, fontSize: 8, letterSpacing: 2)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_ios_rounded, color: luxuryGold.withValues(alpha: 0.5), size: 14),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
-            children: actions.map((action) => _buildActionTile(action["label"] as String, action["icon"] as IconData)).toList(),
-          ),
-        ),
+          ).animate().fadeIn(duration: 800.ms, delay: 400.ms),
+
+          // Standard Actions
+          _buildActionTile(context, "MANAGE USERS & ROLES", Icons.admin_panel_settings_outlined, null),
+          _buildActionTile(context, "VIEW ACTIVE ORDERS", Icons.assignment_outlined, null),
+          _buildActionTile(context, "GLOBAL SYSTEM SETTINGS", Icons.settings_applications_outlined, null),
+        ],
       ),
     );
   }
 
-  Widget _buildActionTile(String label, IconData icon) {
+  Widget _buildActionTile(BuildContext context, String label, IconData icon, String? routeName) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
@@ -233,11 +316,17 @@ class AdminDashboard extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
-            leading: Icon(icon, color: luxuryGold, size: 20),
+            leading: Icon(icon, color: Colors.white54, size: 20),
             title: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9, letterSpacing: 4, fontWeight: FontWeight.w600)),
             trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 12),
-            onTap: () {
-              // Future Routing Logic for Admin Sub-pages
+            onTap: routeName != null ? () => Navigator.pushNamed(context, routeName) : () {
+              // Placeholder for future modules
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: Colors.black.withValues(alpha: 0.9),
+                  content: Text("MODULE ENCRYPTED: $label", style: const TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 2)),
+                ),
+              );
             },
           ),
         ),

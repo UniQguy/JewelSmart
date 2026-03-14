@@ -41,7 +41,8 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
   }
 
   // Procedure: Precision decrement. Removes the item entirely if quantity drops below 1.
-  void decrementQuantity(int productId) {
+  // FIXED: Parameter changed from int to String
+  void decrementQuantity(String productId) {
     final existingIndex = state.indexWhere((item) => item.product.productId == productId);
 
     if (existingIndex != -1) {
@@ -61,7 +62,8 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
   }
 
   // Procedure: Remove specific SKU completely from the vault
-  void removeItem(int productId) {
+  // FIXED: Parameter changed from int to String
+  void removeItem(String productId) {
     state = state.where((item) => item.product.productId != productId).toList();
   }
 

@@ -1,12 +1,15 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // CRITICAL: Added for Haptic Feedback
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../domain/product_model.dart';
+// CRITICAL: Import the Wishlist Provider to enable saving
+import '../../wishlist/providers/wishlist_provider.dart';
 
 /// THE EDITORIAL PRODUCT VIEW
-/// Engineered for 3D spatial depth, immersive parallax, and premium boutique interactions.
+/// Engineered for 3D spatial depth, immersive parallax, responsive web scaling, and premium boutique interactions.
 class ProductDetailPage extends ConsumerStatefulWidget {
   const ProductDetailPage({super.key});
 
@@ -46,34 +49,43 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
           // Ambient back-glow to simulate 3D space
           _buildAmbientBackdrop(),
 
-          CustomScrollView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-            slivers: [
-              _buildParallaxHeader(context, product),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildBrandHeader(),
-                      const SizedBox(height: 10),
-                      _buildEditorialTitle(product),
-                      const SizedBox(height: 40),
-                      _buildPriceSection(product),
-                      const SizedBox(height: 40),
-                      _buildDescriptionSection(),
-                      const SizedBox(height: 50),
-                      _buildBoutiqueSpecifications(product),
-                      const SizedBox(height: 150), // Buffer for the acquisition bar
-                    ],
+          // MAIN SCROLL CONTENT (Secured with Web Scaler)
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800), // Editorial Column width
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  _buildParallaxHeader(context, product),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildBrandHeader(),
+                          const SizedBox(height: 10),
+                          _buildEditorialTitle(product),
+                          const SizedBox(height: 40),
+                          _buildPriceSection(product),
+                          const SizedBox(height: 40),
+                          _buildDescriptionSection(product), // Now uses real database description
+                          const SizedBox(height: 50),
+                          _buildBoutiqueSpecifications(product),
+                          const SizedBox(height: 150), // Buffer for the acquisition bar
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
+
+          // FLOATING ACTIONS
           _buildBackAction(context),
+          _buildWishlistAction(product), // NEW: The Save Button
           _buildBottomAcquisitionBar(context, ref, product),
         ],
       ),
@@ -88,7 +100,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
             center: const Alignment(0, -0.5),
             radius: 1.2,
             colors: [
-              luxuryGold.withOpacity(0.08),
+              luxuryGold.withValues(alpha: 0.08),
               Colors.black,
             ],
           ),
@@ -111,18 +123,8 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
           children: [
             // The 3D Hero Pop
             Hero(
-              tag: 'product_image_${product.productId}',
-              flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-                return RotationTransition(
-                  turns: animation.drive(Tween<double>(begin: 0.0, end: 0.02).chain(CurveTween(curve: Curves.easeOut))),
-                  child: toHeroContext.widget,
-                );
-              },
-              child: Image.asset(
-                product.imagePath,
-                fit: BoxFit.cover,
-                alignment: Alignment(0, (_scrollOffset * 0.001).clamp(-1.0, 1.0)), // Dynamic Parallax
-              ),
+              tag: 'product_image_${product.id}',
+              child: _buildNetworkImage(product),
             ),
             // Volumetric Lighting Overlay
             Container(
@@ -131,7 +133,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.5),
+                    Colors.black.withValues(alpha: 0.5),
                     Colors.transparent,
                     Colors.black,
                   ],
@@ -142,6 +144,48 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
           ],
         ),
       ),
+    );
+  }
+
+  // CINEMATIC CLOUDINARY IMAGE LOADER
+  Widget _buildNetworkImage(Product product) {
+    if (product.imageUrl.isEmpty) {
+      return Container(
+        color: Colors.black,
+        child: Center(
+          child: Icon(Icons.diamond_outlined, color: luxuryGold.withValues(alpha: 0.2), size: 40),
+        ),
+      );
+    }
+
+    return Image.network(
+      product.imageUrl,
+      fit: BoxFit.cover,
+      alignment: Alignment(0, (_scrollOffset * 0.001).clamp(-1.0, 1.0)), // Dynamic Parallax
+      loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: Colors.black,
+          child: Center(
+            child: SizedBox(
+              width: 30,
+              height: 30,
+              child: CircularProgressIndicator(
+                color: luxuryGold.withValues(alpha: 0.5),
+                strokeWidth: 1.5,
+              ),
+            ),
+          ),
+        ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 800.ms);
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: Colors.black,
+          child: Center(
+            child: Icon(Icons.broken_image_outlined, color: Colors.white.withValues(alpha: 0.1), size: 40),
+          ),
+        );
+      },
     );
   }
 
@@ -192,10 +236,12 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
     ).animate().fadeIn(duration: 800.ms, delay: 400.ms);
   }
 
-  Widget _buildDescriptionSection() {
-    return const Text(
-      "A masterpiece of artisanal precision, this piece represents the pinnacle of the 2026 legacy collection. Each facet is hand-finished to ensure a reflection of absolute purity. Engineered to catch the light from every dimension.",
-      style: TextStyle(color: Colors.white60, fontSize: 11, height: 1.8, letterSpacing: 0.5, fontWeight: FontWeight.w300),
+  Widget _buildDescriptionSection(Product product) {
+    return Text(
+      product.description.isNotEmpty
+          ? product.description
+          : "A masterpiece of artisanal precision, this piece represents the pinnacle of the 2026 legacy collection. Each facet is hand-finished to ensure a reflection of absolute purity.",
+      style: const TextStyle(color: Colors.white60, fontSize: 11, height: 1.8, letterSpacing: 0.5, fontWeight: FontWeight.w300),
     ).animate().fadeIn(duration: 800.ms, delay: 500.ms);
   }
 
@@ -212,7 +258,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
   }
 
   Widget _divider() {
-    return Divider(color: Colors.white.withOpacity(0.05), height: 1);
+    return Divider(color: Colors.white.withValues(alpha: 0.05), height: 1);
   }
 
   Widget _specRow(String label, String value) {
@@ -233,34 +279,40 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
       bottom: 0,
       left: 0,
       right: 0,
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(30, 20, 30, 40), // Extra bottom padding for iOS home indicator
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
-              border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
-            ),
-            child: GestureDetector(
-              onTap: () {
-                ref.read(cartProvider.notifier).addItem(product);
-                _showSuccessNotification(context);
-              },
-              behavior: HitTestBehavior.opaque,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800), // Aligns with the main body on web
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
-                height: 65,
+                padding: const EdgeInsets.fromLTRB(30, 20, 30, 40),
                 decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border.all(color: luxuryGold.withOpacity(0.8), width: 0.5),
-                  boxShadow: [
-                    BoxShadow(color: luxuryGold.withOpacity(0.1), blurRadius: 30, spreadRadius: -10)
-                  ],
+                  color: Colors.black.withValues(alpha: 0.6),
+                  border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
                 ),
-                child: Center(
-                  child: Text(
-                    "ACQUIRE PIECE",
-                    style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, letterSpacing: 8, fontSize: 9),
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.mediumImpact(); // Tactile confirmation
+                    ref.read(cartProvider.notifier).addItem(product);
+                    _showSuccessNotification(context);
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    height: 65,
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      border: Border.all(color: luxuryGold.withValues(alpha: 0.8), width: 0.5),
+                      boxShadow: [
+                        BoxShadow(color: luxuryGold.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: -10)
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        "ACQUIRE PIECE",
+                        style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, letterSpacing: 8, fontSize: 9),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -279,25 +331,30 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.only(bottom: 120, left: 20, right: 20),
         duration: const Duration(seconds: 3),
-        content: ClipRRect(
-          borderRadius: BorderRadius.circular(0), // High fashion square
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                border: Border.all(color: luxuryGold.withOpacity(0.5), width: 0.5),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.check_circle_outline, color: luxuryGold, size: 18),
-                  const SizedBox(width: 15),
-                  const Text(
-                    "PIECE SECURED IN VAULT",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 3, fontSize: 8),
+        content: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600), // Web safety
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(0),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
                   ),
-                ],
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle_outline, color: luxuryGold, size: 18),
+                      const SizedBox(width: 15),
+                      const Text(
+                        "PIECE SECURED IN VAULT",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 3, fontSize: 8),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -308,20 +365,59 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
 
   Widget _buildBackAction(BuildContext context) {
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 10, // Dynamic top padding
+      top: MediaQuery.of(context).padding.top + 10,
       left: 20,
       child: ClipOval(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              Navigator.maybePop(context); // Safe routing
+            },
             style: IconButton.styleFrom(
-              backgroundColor: Colors.black.withOpacity(0.2),
+              backgroundColor: Colors.black.withValues(alpha: 0.2),
               padding: const EdgeInsets.all(12),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // THE NEW CURATION ACTION: Save to Wishlist Hookup
+  Widget _buildWishlistAction(Product product) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 10,
+      right: 20,
+      child: Consumer(
+          builder: (context, ref, child) {
+            final isSaved = ref.watch(wishlistProvider.notifier).isInWishlist(product.id);
+
+            return ClipOval(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: IconButton(
+                  icon: Icon(
+                      isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      color: isSaved ? luxuryGold : Colors.white,
+                      size: 16
+                  ),
+                  onPressed: () {
+                    HapticFeedback.lightImpact(); // Tactile feel
+                    ref.read(wishlistProvider.notifier).toggleWishlist(product);
+                    // Forces a rebuild of just this consumer to show the heart fill instantly
+                    setState(() {});
+                  },
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.2),
+                    padding: const EdgeInsets.all(12),
+                  ),
+                ),
+              ),
+            );
+          }
       ),
     );
   }

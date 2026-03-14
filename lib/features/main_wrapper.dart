@@ -11,7 +11,7 @@ import 'cart/presentation/cart_page.dart';
 import 'profile/presentation/profile_page.dart';
 
 /// THE ARCHITECTURAL STAGE: MainWrapper
-/// Implements high-end spatial depth and global glassmorphism.
+/// Implements high-end spatial depth, global glassmorphism, and responsive web-scaling.
 class MainWrapper extends ConsumerStatefulWidget {
   const MainWrapper({super.key});
 
@@ -24,6 +24,9 @@ class _MainWrapperState extends ConsumerState<MainWrapper> with TickerProviderSt
   final PageController _pageController = PageController();
   final Color luxuryGold = const Color(0xFFD4AF37);
 
+  // Breathing background animation for spatial depth
+  late AnimationController _bgController;
+
   // Define the main navigation pages
   final List<Widget> _pages = [
     const HomePage(),
@@ -33,8 +36,18 @@ class _MainWrapperState extends ConsumerState<MainWrapper> with TickerProviderSt
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _bgController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 15),
+    )..repeat(reverse: true);
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
+    _bgController.dispose();
     super.dispose();
   }
 
@@ -43,7 +56,6 @@ class _MainWrapperState extends ConsumerState<MainWrapper> with TickerProviderSt
 
     setState(() => _currentIndex = index);
 
-    // FIXED: Swapped nonexistent curve to a premium built-in curve
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 800),
@@ -57,69 +69,100 @@ class _MainWrapperState extends ConsumerState<MainWrapper> with TickerProviderSt
     final cartItems = ref.watch(cartProvider);
     final int cartCount = cartItems.length;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      extendBody: true, // Crucial for glassmorphic overlap
-      body: Stack(
-        children: [
-          // 1. GLOBAL BACKGROUND DEPTH LAYER
-          // This layer persists through all page transitions to maintain 3D spatial feel
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.topLeft,
-                  radius: 1.5,
-                  colors: [
-                    luxuryGold.withValues(alpha: 0.08), // FIXED: withOpacity to withValues
-                    Colors.black,
-                  ],
-                ),
-              ),
+    // SAFE ROUTING: Prevents the app from closing to a white screen if the back button is pressed.
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          // If they hit back on another tab, route them safely to the Studio (Home)
+          _onItemTapped(0);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        extendBody: true, // Crucial for glassmorphic overlap
+        body: Stack(
+          children: [
+            // 1. GLOBAL BACKGROUND DEPTH LAYER (Now with breathing spatial movement)
+            _buildAnimatedBackground(),
+
+            // 2. LIQUID CONTENT LAYER
+            PageView(
+              controller: _pageController,
+              onPageChanged: (index) => setState(() => _currentIndex = index),
+              physics: const BouncingScrollPhysics(),
+              children: _pages,
             ),
-          ).animate().fadeIn(duration: 2.seconds),
 
-          // 2. LIQUID CONTENT LAYER
-          PageView(
-            controller: _pageController,
-            onPageChanged: (index) => setState(() => _currentIndex = index),
-            physics: const BouncingScrollPhysics(),
-            children: _pages,
-          ),
-
-          // 3. FLOATING GLASS NAVIGATION DOCK
-          _buildGlassDock(cartCount),
-        ],
+            // 3. RESPONSIVE FLOATING GLASS DOCK
+            _buildResponsiveGlassDock(cartCount),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildGlassDock(int cartCount) {
-    return Positioned(
-      bottom: 30,
-      left: 20,
-      right: 20,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(0), // Signature square "Editorial" edges
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25), // Ultra-soft frost effect
-          child: Container(
-            height: 75,
+  Widget _buildAnimatedBackground() {
+    return Positioned.fill(
+      child: AnimatedBuilder(
+        animation: _bgController,
+        builder: (context, child) {
+          return Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.03), // FIXED: withOpacity to withValues
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08), // FIXED: withOpacity to withValues
-                width: 0.5,
+              gradient: RadialGradient(
+                center: Alignment(
+                  -0.8 + (_bgController.value * 0.2), // X-axis breathing
+                  -0.8 + (_bgController.value * 0.2), // Y-axis breathing
+                ),
+                radius: 1.5 + (_bgController.value * 0.1), // Size breathing
+                colors: [
+                  luxuryGold.withValues(alpha: 0.08),
+                  Colors.black,
+                ],
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(Icons.home_outlined, 0, "STUDIO"),
-                _buildNavItem(Icons.search, 1, "SEARCH"),
-                _buildNavItem(Icons.shopping_bag_outlined, 2, "VAULT", count: cartCount),
-                _buildNavItem(Icons.person_outline, 3, "IDENTITY"),
-              ],
+          );
+        },
+      ),
+    ).animate().fadeIn(duration: 2.seconds);
+  }
+
+  Widget _buildResponsiveGlassDock(int cartCount) {
+    return Positioned(
+      bottom: 30,
+      left: 0,
+      right: 0, // Left 0 and Right 0 force the Center widget to span the whole width
+      child: Center(
+        child: ConstrainedBox(
+          // CRITICAL WEB FIX: On massive monitors, the dock will max out at 450px wide.
+          // On mobile phones, it will naturally take up the available screen space.
+          constraints: const BoxConstraints(maxWidth: 450),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(0), // Signature square "Editorial" edges
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25), // Ultra-soft frost effect
+                child: Container(
+                  height: 75,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.03),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildNavItem(Icons.home_outlined, 0, "STUDIO"),
+                      _buildNavItem(Icons.search, 1, "SEARCH"),
+                      _buildNavItem(Icons.shopping_bag_outlined, 2, "VAULT", count: cartCount),
+                      _buildNavItem(Icons.person_outline, 3, "IDENTITY"),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -137,49 +180,56 @@ class _MainWrapperState extends ConsumerState<MainWrapper> with TickerProviderSt
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  icon,
-                  color: isActive ? luxuryGold : Colors.white24,
-                  size: 22,
-                ).animate(target: isActive ? 1 : 0).shimmer(color: luxuryGold.withValues(alpha: 0.5)), // FIXED: withOpacity to withValues
+            // Physical interaction: Icon shifts up slightly when active
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOutQuint,
+              transform: Matrix4.translationValues(0, isActive ? -2.0 : 0, 0),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    icon,
+                    color: isActive ? luxuryGold : Colors.white24,
+                    size: 22,
+                  ).animate(target: isActive ? 1 : 0).shimmer(color: luxuryGold.withValues(alpha: 0.5)),
 
-                // Dynamic Notification Badge
-                if (count > 0)
-                  Positioned(
-                    right: -8,
-                    top: -8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: luxuryGold,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: luxuryGold.withValues(alpha: 0.4), // FIXED: withOpacity to withValues
-                            blurRadius: 10,
-                            spreadRadius: 2,
-                          )
-                        ],
-                      ),
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                      child: Center(
-                        child: Text(
-                          '$count',
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 8,
-                            fontWeight: FontWeight.w900,
+                  // Dynamic Notification Badge
+                  if (count > 0)
+                    Positioned(
+                      right: -8,
+                      top: -8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: luxuryGold,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: luxuryGold.withValues(alpha: 0.4),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            )
+                          ],
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Center(
+                          child: Text(
+                            '$count',
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
-                      ),
-                    ).animate().scale(duration: 200.ms),
-                  ),
-              ],
+                      ).animate().scale(duration: 200.ms, curve: Curves.easeOutBack),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 4),
+
             // Minimalist active indicator label
             AnimatedOpacity(
               duration: const Duration(milliseconds: 300),

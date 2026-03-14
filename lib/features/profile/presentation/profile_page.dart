@@ -5,14 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../auth/domain/repositories/mock_purchase_repository.dart';
-import '../../auth/domain/purchase_model.dart';
 import '../../../core/router/app_routes.dart';
 import '../../auth/presentation/edit_profile_screen.dart';
-import '../../auth/data/auth_service.dart'; // REQUIRED for proper logout
+import '../../auth/presentation/acquisition_history_page.dart';
+import '../../wishlist/presentation/wishlist_page.dart';
+import '../../auth/data/auth_service.dart';
 
-/// THE IDENTITY (PROFILE)
-/// Engineered for 3D spatial depth and real-time Firestore data integration.
+/// THE VIP CLIENT DOSSIER (PROFILE)
+/// Engineered with an interactive 3D Black Card identity and live Firestore integration.
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -22,57 +22,98 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin {
   final Color luxuryGold = const Color(0xFFD4AF37);
-  final MockPurchaseRepository _purchaseRepository = MockPurchaseRepository();
+
+  // 3D Card Physics
+  Offset _cardTilt = Offset.zero;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.transparent, // Allows MainWrapper's deep spatial background
+      extendBodyBehindAppBar: true,
+      appBar: _buildLiquidAppBar(),
       body: Stack(
         children: [
           _buildAmbientGlow(),
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              children: [
-                const SizedBox(height: 80),
 
-                // 1. DYNAMIC ARCHITECTURAL AVATAR
-                // Listens to Firestore in real-time for name and role changes
-                StreamBuilder<DocumentSnapshot>(
-                  stream: FirebaseAuth.instance.currentUser != null
-                      ? FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).snapshots()
-                      : const Stream.empty(),
-                  builder: (context, snapshot) {
-                    String name = "MEMBER";
-                    String role = "CUSTOMER";
+          // Real-time Firestore Stream for User Identity
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseAuth.instance.currentUser != null
+                ? FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).snapshots()
+                : const Stream.empty(),
+            builder: (context, snapshot) {
+              String name = "AUTHENTICATING...";
+              String role = "VIP CLIENT";
+              String email = FirebaseAuth.instance.currentUser?.email ?? "secure@vault.com";
+              String memberSince = "2026";
 
-                    if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
-                      final data = snapshot.data!.data() as Map<String, dynamic>;
-                      name = data['name'] ?? "MEMBER";
-                      role = data['role'] ?? "CUSTOMER";
-                    }
+              if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+                name = data['name'] ?? "VIP CLIENT";
+                role = data['role'] ?? "MEMBER";
+                // If you store creation date, you can pull it here.
+              }
 
-                    return _buildProfileHeader(context, name, role);
-                  },
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: AnimationLimiter(
+                  child: Column(
+                    children: AnimationConfiguration.toStaggeredList(
+                      duration: const Duration(milliseconds: 800),
+                      childAnimationBuilder: (widget) => SlideAnimation(
+                        verticalOffset: 50.0,
+                        child: FadeInAnimation(child: widget),
+                      ),
+                      children: [
+                        const SizedBox(height: 120),
+
+                        // 1. THE INTERACTIVE 3D BLACK CARD
+                        _buildInteractiveBlackCard(name, role, email, memberSince),
+
+                        const SizedBox(height: 40),
+
+                        // 2. LIVE VAULT LOGISTICS (Replaces fake order tracking)
+                        _buildSectionHeader("ACTIVE ACQUISITIONS"),
+                        _buildVaultLogistics(),
+
+                        const SizedBox(height: 40),
+
+                        // 3. SECURE PREFERENCES MENU
+                        _buildSectionHeader("SECURITY & PREFERENCES"),
+                        _buildVaultMenu(context),
+
+                        const SizedBox(height: 50),
+                        _buildLogoutAction(),
+                        const SizedBox(height: 150), // Dock buffer
+                      ],
+                    ),
+                  ),
                 ),
-
-                const SizedBox(height: 40),
-
-                // 2. DYNAMIC ORDER TRACKER
-                _buildOrderTrackingSection("InProgress"),
-
-                const SizedBox(height: 50),
-
-                // 3. STAGGERED VAULT MENU
-                _buildVaultMenu(context),
-
-                // 150px buffer ensures the last item clears the MainWrapper's Glass Dock
-                const SizedBox(height: 150),
-              ],
-            ),
+              );
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildLiquidAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(90),
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: AppBar(
+            backgroundColor: Colors.black.withValues(alpha: 0.5),
+            elevation: 0,
+            centerTitle: true,
+            automaticallyImplyLeading: false,
+            title: Text(
+                'CLIENT DOSSIER',
+                style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 10)
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -82,296 +123,285 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
       top: -100,
       right: -50,
       child: Container(
-        width: 300,
-        height: 300,
+        width: 350,
+        height: 350,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: luxuryGold.withValues(alpha: 0.03),
           boxShadow: [
-            BoxShadow(color: luxuryGold.withValues(alpha: 0.04), blurRadius: 100, spreadRadius: 40)
+            BoxShadow(color: luxuryGold.withValues(alpha: 0.05), blurRadius: 120, spreadRadius: 40)
           ],
         ),
-      ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 8.seconds),
+      ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 8.seconds),
     );
   }
 
-  Widget _buildOrderTrackingSection(String currentStatus) {
-    final List<String> statuses = ["Created", "Accepted", "InProgress", "Completed", "Delivered"];
-    int currentIndex = statuses.indexOf(currentStatus);
-
+  // --- THE 3D INTERACTIVE BLACK CARD ---
+  Widget _buildInteractiveBlackCard(String name, String role, String email, String date) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("REPAIR & CUSTOM ORDERS",
-              style: TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(0),
+      child: GestureDetector(
+        onPanUpdate: (details) {
+          setState(() {
+            // Adjust tilt based on finger swipe
+            _cardTilt += details.delta;
+          });
+        },
+        onPanEnd: (_) {
+          // Snap back to flat when released
+          setState(() {
+            _cardTilt = Offset.zero;
+          });
+        },
+        child: Transform(
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.001) // 3D Perspective effect
+            ..rotateX(-_cardTilt.dy * 0.005)
+            ..rotateY(_cardTilt.dx * 0.005),
+          alignment: Alignment.center,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15), // High-end slight curve
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                padding: const EdgeInsets.all(25),
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                width: double.infinity,
+                height: 220,
+                padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.02),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 5)
-                    ]
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.08),
+                      Colors.black.withValues(alpha: 0.9),
+                    ],
+                  ),
+                  border: Border.all(
+                      color: luxuryGold.withValues(alpha: _cardTilt == Offset.zero ? 0.3 : 0.8),
+                      width: 0.5
+                  ),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 30, spreadRadius: 10),
+                    if (_cardTilt != Offset.zero)
+                      BoxShadow(color: luxuryGold.withValues(alpha: 0.1), blurRadius: 50, spreadRadius: 5)
+                  ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("ORDER #JS2026", style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold)),
-                        Text(currentStatus.toUpperCase(),
-                            style: const TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 3, fontWeight: FontWeight.w900)),
+                        // Simulated NFC / Security Chip
+                        Container(
+                          width: 40,
+                          height: 30,
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 1),
+                              gradient: LinearGradient(
+                                colors: [luxuryGold.withValues(alpha: 0.1), luxuryGold.withValues(alpha: 0.3)],
+                              )
+                          ),
+                          child: Center(child: Icon(Icons.memory, color: luxuryGold.withValues(alpha: 0.5), size: 18)),
+                        ),
+                        Icon(Icons.diamond_outlined, color: luxuryGold, size: 24),
                       ],
                     ),
-                    const SizedBox(height: 35),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w200, letterSpacing: 6)),
+                        const SizedBox(height: 5),
+                        Text(email.toLowerCase(), style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, letterSpacing: 2)),
+                      ],
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: List.generate(statuses.length, (index) {
-                        bool isPassed = index <= currentIndex;
-                        bool isActive = index == currentIndex;
-                        return Expanded(
-                          child: Row(
-                            children: [
-                              Container(
-                                height: isActive ? 8 : 6,
-                                width: isActive ? 8 : 6,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isPassed ? luxuryGold : Colors.white10,
-                                  boxShadow: isPassed ? [BoxShadow(color: luxuryGold.withValues(alpha: 0.6), blurRadius: 10, spreadRadius: 1)] : [],
-                                ),
-                              ).animate(target: isActive ? 1 : 0).shimmer(duration: 2.seconds, color: Colors.white),
-                              if (index != statuses.length - 1)
-                                Expanded(
-                                  child: Container(
-                                    height: 1,
-                                    color: isPassed ? luxuryGold.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.05),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      }),
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("CLEARANCE", style: TextStyle(color: luxuryGold.withValues(alpha: 0.5), fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 4)),
+                            const SizedBox(height: 4),
+                            Text(role.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 3)),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text("ESTABLISHED", style: TextStyle(color: luxuryGold.withValues(alpha: 0.5), fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 4)),
+                            const SizedBox(height: 4),
+                            Text(date, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 3)),
+                          ],
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
-          ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.2, end: 0),
-        ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildProfileHeader(BuildContext context, String name, String role) {
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20, left: 30),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 6),
+        ),
+      ),
+    );
+  }
+
+  // --- VAULT LOGISTICS (Replaces the dummy progress bar) ---
+  Widget _buildVaultLogistics() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Container(
+        padding: const EdgeInsets.all(25),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.02),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _logisticsNode(Icons.inventory_2_outlined, "PROCESSING", "0", isActive: true),
+            _logisticsDivider(),
+            _logisticsNode(Icons.flight_takeoff_rounded, "IN TRANSIT", "0"),
+            _logisticsDivider(),
+            _logisticsNode(Icons.task_alt_rounded, "SECURED", "12", isGold: true),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _logisticsNode(IconData icon, String label, String count, {bool isActive = false, bool isGold = false}) {
+    Color baseColor = isGold ? luxuryGold : (isActive ? Colors.white : Colors.white24);
     return Column(
       children: [
         Stack(
           alignment: Alignment.center,
           children: [
-            Container(
-              height: 130, width: 130,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: luxuryGold.withValues(alpha: 0.1), blurRadius: 40, spreadRadius: 10)],
-              ),
-            ),
-            Container(
-              height: 110, width: 110,
-              decoration: BoxDecoration(
-                border: Border.all(color: luxuryGold.withValues(alpha: 0.8), width: 0.5),
-                shape: BoxShape.circle,
-                color: Colors.black, // Dark background for the initial
-              ),
-              padding: const EdgeInsets.all(4),
-              child: Center(
-                // Auto-generates the Avatar based on the first letter of their name
-                child: Text(
-                  name.isNotEmpty ? name[0].toUpperCase() : 'X',
-                  style: TextStyle(color: luxuryGold, fontSize: 40, fontWeight: FontWeight.w200),
-                ),
-              ),
-            ).animate().scale(duration: 800.ms, curve: Curves.easeOutBack),
+            Icon(icon, color: baseColor, size: 24),
+            if (isActive) // Processing shimmer effect
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white24, width: 0.5)),
+              ).animate(onPlay: (c) => c.repeat()).rotate(duration: 4.seconds),
           ],
         ),
-        const SizedBox(height: 25),
-        Text(name.toUpperCase(),
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w100, letterSpacing: 10))
-            .animate().fadeIn(delay: 200.ms),
-        const SizedBox(height: 10),
-        Text("${role.toUpperCase()} MEMBER",
-            style: TextStyle(color: luxuryGold, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 5))
-            .animate().fadeIn(delay: 400.ms),
+        const SizedBox(height: 15),
+        Text(count, style: TextStyle(color: baseColor, fontSize: 16, fontWeight: FontWeight.w200)),
+        const SizedBox(height: 5),
+        Text(label, style: TextStyle(color: baseColor.withValues(alpha: 0.5), fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 2)),
       ],
     );
   }
 
-  Widget _buildVaultMenu(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 25),
-      child: AnimationLimiter(
-        child: Column(
-          children: AnimationConfiguration.toStaggeredList(
-            duration: const Duration(milliseconds: 600),
-            childAnimationBuilder: (widget) => SlideAnimation(
-              verticalOffset: 30.0,
-              child: FadeInAnimation(child: widget),
-            ),
-            children: [
-              _vaultItem(
-                  Icons.history_edu_outlined,
-                  "ACQUISITION HISTORY",
-                  onTap: () => _openPurchaseHistory(context)
-              ),
-              _vaultItem(Icons.manage_accounts_outlined, "EDIT IDENTITY PROFILE", onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
-              }),
-              _vaultItem(Icons.favorite_border_rounded, "CURATED WISHLIST", onTap: () {}),
-              _vaultItem(Icons.location_on_outlined, "SECURE ADDRESSES", onTap: () {}),
-              _vaultItem(Icons.settings_outlined, "VAULT SETTINGS", onTap: () {}),
-              const SizedBox(height: 35),
-              _vaultItem(
-                  Icons.logout_rounded,
-                  "EXIT GALLERY",
-                  isLast: true,
-                  onTap: () async {
-                    // CRITICAL UPDATE: Properly terminates the Firebase Session
-                    await AuthService().signOut();
-                    if (context.mounted) {
-                      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
-                    }
-                  }
-              ),
-            ],
-          ),
-        ),
-      ),
+  Widget _logisticsDivider() {
+    return Container(
+      width: 30,
+      height: 0.5,
+      color: Colors.white.withValues(alpha: 0.1),
     );
   }
 
-  Widget _vaultItem(IconData icon, String label, {bool isLast = false, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
+  // --- HIGH-END LIST MENU ---
+  Widget _buildVaultMenu(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 15),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.01),
           border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
         ),
-        child: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
-              leading: Icon(icon, color: isLast ? Colors.redAccent.withValues(alpha: 0.6) : luxuryGold, size: 18),
-              title: Text(label,
-                  style: const TextStyle(color: Colors.white70, fontSize: 9, letterSpacing: 4, fontWeight: FontWeight.w400)),
-              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 12),
-            ),
+        child: Column(
+          children: [
+            // FIXED: Now uses MaterialPageRoute directly to bypass route string errors
+            _vaultItem(Icons.history_edu_outlined, "ACQUISITION HISTORY", onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const AcquisitionHistoryPage()));
+            }),
+            _divider(),
+            _vaultItem(Icons.manage_accounts_outlined, "EDIT IDENTITY PROFILE", onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
+            }),
+            _divider(),
+            _vaultItem(Icons.diamond_outlined, "CURATED WISHLIST",onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const WishlistPage()));
+            }),
+            _divider(),
+            _vaultItem(Icons.security_rounded, "VAULT SETTINGS", onTap: () {}),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _vaultItem(IconData icon, String label, {required VoidCallback onTap}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        highlightColor: luxuryGold.withValues(alpha: 0.1),
+        splashColor: luxuryGold.withValues(alpha: 0.2),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 22),
+          child: Row(
+            children: [
+              Icon(icon, color: luxuryGold.withValues(alpha: 0.8), size: 18),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 9, letterSpacing: 4, fontWeight: FontWeight.w600)),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded, color: Colors.white.withValues(alpha: 0.2), size: 12),
+            ],
           ),
         ),
       ),
     );
   }
 
-  void _openPurchaseHistory(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.85,
-              padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.8),
-                border: Border(top: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(width: 40, height: 2, color: Colors.white24),
-                  ),
-                  const SizedBox(height: 30),
-                  Text("THE ARCHIVE", style: TextStyle(color: luxuryGold, fontSize: 18, letterSpacing: 8, fontWeight: FontWeight.w100)),
-                  const SizedBox(height: 10),
-                  const Text("YOUR PAST ACQUISITIONS", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 4)),
-                  const SizedBox(height: 40),
-                  Expanded(
-                    child: FutureBuilder<List<PurchaseRecord>>(
-                      future: _purchaseRepository.getPurchaseHistory('user_123'),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1));
-                        } else if (snapshot.hasError) {
-                          return Center(child: Text("FAILED TO DECRYPT ARCHIVE", style: TextStyle(color: Colors.redAccent.withValues(alpha: 0.8), fontSize: 10, letterSpacing: 2)));
-                        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return const Center(child: Text("NO PAST ACQUISITIONS SECURED", style: TextStyle(color: Colors.white38, fontSize: 10, letterSpacing: 4)));
-                        }
-
-                        final purchases = snapshot.data!;
-                        return ListView.builder(
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: purchases.length,
-                          itemBuilder: (context, index) {
-                            final purchase = purchases[index];
-                            return _buildHistoryCard(purchase).animate().fadeIn(delay: Duration(milliseconds: 100 * index)).slideY(begin: 0.2, end: 0);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
+  Widget _divider() {
+    return Divider(color: Colors.white.withValues(alpha: 0.05), height: 1, indent: 25, endIndent: 25);
   }
 
-  Widget _buildHistoryCard(PurchaseRecord purchase) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("ID: ${purchase.orderId.toUpperCase()}", style: const TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 2)),
-              Text(purchase.purchaseDate.toString().substring(0, 10), style: TextStyle(color: luxuryGold, fontSize: 8, letterSpacing: 2)),
-            ],
+  Widget _buildLogoutAction() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: GestureDetector(
+        onTap: () async {
+          await AuthService().signOut();
+          if (mounted) {
+            Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+          }
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.redAccent.withValues(alpha: 0.05),
+            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3), width: 0.5),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            child: Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
+          child: const Center(
+            child: Text(
+              "DISCONNECT FROM VAULT",
+              style: TextStyle(color: Colors.redAccent, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 5),
+            ),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("TOTAL VALUE SECURED", style: TextStyle(color: Colors.white70, fontSize: 8, letterSpacing: 3, fontWeight: FontWeight.bold)),
-              Text("\$${purchase.amountPaid.toStringAsFixed(2)}", style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w200, letterSpacing: 1)),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

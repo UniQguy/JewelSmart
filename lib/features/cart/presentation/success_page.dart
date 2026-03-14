@@ -40,14 +40,12 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
 
     // 2. Atomic Inventory Update: Deduct stock for all items
     for (var item in cartItems) {
+      // FIXED: Uses the consistent productId alias (String)
       ref.read(inventoryProvider.notifier).stockOut(
           item.product.productId,
           item.quantity
       );
     }
-
-    // TODO: In a real app, this is where you would call the MockPurchaseRepository
-    // to save this transaction to the user's Profile history.
 
     // 3. Clear the Vault for future acquisitions
     ref.read(cartProvider.notifier).clearCart();
@@ -91,7 +89,7 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
                 center: Alignment.center,
                 radius: 1.5,
                 colors: [
-                  luxuryGold.withOpacity(0.08),
+                  luxuryGold.withValues(alpha: 0.08),
                   Colors.black,
                 ],
               ),
@@ -102,7 +100,7 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
           // Particle Dust Effect Simulation
           Positioned.fill(
             child: CustomPaint(
-              painter: _DustPainter(color: luxuryGold.withOpacity(0.1)),
+              painter: _DustPainter(color: luxuryGold.withValues(alpha: 0.1)),
             ),
           ).animate().fadeIn(duration: 3.seconds),
         ],
@@ -118,7 +116,7 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
           shape: BoxShape.circle,
           border: Border.all(color: luxuryGold, width: 0.5),
           boxShadow: [
-            BoxShadow(color: luxuryGold.withOpacity(0.1), blurRadius: 40, spreadRadius: 10)
+            BoxShadow(color: luxuryGold.withValues(alpha: 0.1), blurRadius: 40, spreadRadius: 10)
           ]
       ),
       child: Stack(
@@ -130,7 +128,7 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
             height: 90,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border(top: BorderSide(color: luxuryGold.withOpacity(0.5), width: 2)),
+              border: Border(top: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 2)),
             ),
           ).animate(onPlay: (c) => c.repeat()).rotate(duration: 4.seconds),
 
@@ -161,7 +159,7 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
                 fontWeight: FontWeight.w100,
                 height: 1.0,
                 letterSpacing: -2,
-                shadows: [Shadow(color: luxuryGold.withOpacity(0.2), blurRadius: 20)]
+                shadows: [Shadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 20)]
             )
         ),
       ],
@@ -176,20 +174,20 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
           width: 320,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 35),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.02),
-            border: Border.all(color: Colors.white.withOpacity(0.05), width: 0.5),
+            color: Colors.white.withValues(alpha: 0.02),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
           ),
           child: Column(
             children: [
               _summaryRow("STATUS", "AUTHENTICATED"),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                child: Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
               ),
               _summaryRow("VAULT ID", _vaultId),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                child: Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
               ),
               _summaryRow("LOGISTICS", "PRIVATE COURIER"),
             ],
@@ -217,13 +215,12 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
 
   Widget _buildReturnAction() {
     return GestureDetector(
-      // CRITICAL FIX: Route back to the MainWrapper (Splash -> Wrapper logic) instead of standalone Home
-      onTap: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.splash, (route) => false),
+      onTap: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.main, (route) => false),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 22),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.02),
-          border: Border.all(color: luxuryGold.withOpacity(0.6), width: 0.5),
+          color: Colors.white.withValues(alpha: 0.02),
+          border: Border.all(color: luxuryGold.withValues(alpha: 0.6), width: 0.5),
         ),
         child: Text(
             "RETURN TO STUDIO",
@@ -234,7 +231,6 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
   }
 }
 
-/// A simple painter to simulate floating ambient dust particles
 class _DustPainter extends CustomPainter {
   final Color color;
   _DustPainter({required this.color});
@@ -242,7 +238,6 @@ class _DustPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = color;
-    // Drawing a few static dots to simulate catching the light
     canvas.drawCircle(Offset(size.width * 0.2, size.height * 0.3), 1.5, paint);
     canvas.drawCircle(Offset(size.width * 0.8, size.height * 0.5), 1.0, paint);
     canvas.drawCircle(Offset(size.width * 0.5, size.height * 0.8), 2.0, paint);

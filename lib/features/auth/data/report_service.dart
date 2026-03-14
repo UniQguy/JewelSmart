@@ -8,7 +8,8 @@ class ReportService {
 
     // Procedure: Aggregate data from the Jewelry_Product Table
     for (var product in products) {
-      totalValue += product.basePrice + product.makingCharges;
+      // FIXED: Changed 'basePrice' to 'price' to match the updated Product Blueprint
+      totalValue += product.price + product.makingCharges;
     }
 
     return Report(

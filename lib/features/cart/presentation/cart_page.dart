@@ -8,6 +8,7 @@ import '../../../core/router/app_routes.dart';
 
 /// THE PRIVATE VAULT (CART)
 /// Engineered to float seamlessly within the MainWrapper's 3D spatial shell.
+/// Fully synchronized with Live Firestore data and Cloudinary network assets.
 class CartPage extends ConsumerWidget {
   const CartPage({super.key});
 
@@ -67,7 +68,7 @@ class CartPage extends ConsumerWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: AppBar(
-            backgroundColor: Colors.black.withOpacity(0.4),
+            backgroundColor: Colors.black.withValues(alpha: 0.4),
             elevation: 0,
             centerTitle: true,
             automaticallyImplyLeading: false, // Removed back button as this is a root tab
@@ -90,9 +91,9 @@ class CartPage extends ConsumerWidget {
         height: 300,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: luxuryGold.withOpacity(0.03),
+          color: luxuryGold.withValues(alpha: 0.03),
           boxShadow: [
-            BoxShadow(color: luxuryGold.withOpacity(0.05), blurRadius: 100, spreadRadius: 40)
+            BoxShadow(color: luxuryGold.withValues(alpha: 0.05), blurRadius: 100, spreadRadius: 40)
           ],
         ),
       ),
@@ -104,27 +105,39 @@ class CartPage extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 25),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
-        border: Border.all(color: Colors.white.withOpacity(0.05), width: 0.5),
+        color: Colors.white.withValues(alpha: 0.02),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, spreadRadius: 5)
+          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 5)
         ],
       ),
       child: Row(
         children: [
-          // High-Resolution Preview with subtle scale
+          // High-Resolution Network Preview with Cloudinary Fallback
           Hero(
-            tag: 'vault_item_${item.product.productId}',
+            tag: 'vault_item_${item.product.id}',
             child: Container(
               width: 85,
               height: 85,
               decoration: BoxDecoration(
                 color: Colors.black,
                 border: Border.all(color: Colors.white10, width: 0.5),
-                image: DecorationImage(
-                  image: AssetImage(item.product.imagePath),
-                  fit: BoxFit.cover,
-                ),
+              ),
+              child: item.product.imageUrl.isEmpty
+                  ? Center(child: Icon(Icons.diamond_outlined, color: luxuryGold.withValues(alpha: 0.2)))
+                  : Image.network(
+                item.product.imageUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: SizedBox(
+                      width: 15, height: 15,
+                      child: CircularProgressIndicator(color: luxuryGold.withValues(alpha: 0.5), strokeWidth: 1.5),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image_outlined, color: Colors.white10),
               ),
             ),
           ),
@@ -145,10 +158,10 @@ class CartPage extends ConsumerWidget {
               ],
             ),
           ),
-          // Precision Quantity Controls
+          // Precision Quantity Controls mapped to the Live String ID
           Row(
             children: [
-              _quantityAction(Icons.remove, () => ref.read(cartProvider.notifier).decrementQuantity(item.product.productId)),
+              _quantityAction(Icons.remove, () => ref.read(cartProvider.notifier).decrementQuantity(item.product.id)),
               SizedBox(
                 width: 30,
                 child: Center(
@@ -173,8 +186,8 @@ class CartPage extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
-          color: Colors.white.withOpacity(0.02),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          color: Colors.white.withValues(alpha: 0.02),
         ),
         child: Icon(icon, color: Colors.white54, size: 12),
       ),
@@ -192,10 +205,10 @@ class CartPage extends ConsumerWidget {
           child: Container(
             padding: const EdgeInsets.all(35),
             decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5), // More transparent to show background depth
-                border: Border.all(color: Colors.white.withOpacity(0.08), width: 0.5),
+                color: Colors.black.withValues(alpha: 0.5),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30, spreadRadius: 10)
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 10)
                 ]
             ),
             child: Column(
@@ -206,7 +219,7 @@ class CartPage extends ConsumerWidget {
                 _priceRow("ESTIMATED TAX", "\$${(total * 0.03).toStringAsFixed(2)}", isSmall: true),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 25),
-                  child: Divider(color: Colors.white.withOpacity(0.1), height: 1),
+                  child: Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
                 ),
                 _priceRow("TOTAL ACQUISITION", "\$${(total * 1.03).toStringAsFixed(2)}", isSmall: false),
                 const SizedBox(height: 35),
@@ -247,9 +260,9 @@ class CartPage extends ConsumerWidget {
         width: double.infinity,
         height: 65,
         decoration: BoxDecoration(
-            color: luxuryGold.withOpacity(0.9),
+            color: luxuryGold.withValues(alpha: 0.9),
             boxShadow: [
-              BoxShadow(color: luxuryGold.withOpacity(0.2), blurRadius: 20, spreadRadius: 2)
+              BoxShadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 2)
             ]
         ),
         child: const Center(
@@ -267,7 +280,7 @@ class CartPage extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, color: luxuryGold.withOpacity(0.2), size: 60)
+          Icon(Icons.inventory_2_outlined, color: luxuryGold.withValues(alpha: 0.2), size: 60)
               .animate(onPlay: (controller) => controller.repeat(reverse: true))
               .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 2.seconds),
           const SizedBox(height: 40),

@@ -1,9 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// THE IDENTITY MODIFICATION TERMINAL (EDIT PROFILE)
-/// Engineered as a highly secure, spatial glassmorphic interface.
+/// Engineered as a highly secure, spatial glassmorphic interface connected to Live Firestore.
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -13,21 +15,69 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final Color luxuryGold = const Color(0xFFD4AF37);
-  final TextEditingController _nameController = TextEditingController(text: "PRASHANT");
-  final TextEditingController _emailController = TextEditingController(text: "prashant@example.com");
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+
+  bool _isLoading = true;
+  bool _isSaving = false;
 
   @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _fetchUserData();
   }
 
-  // Simulating a secure backend update
-  void _saveChanges() async {
-    // Dismiss keyboard
-    FocusScope.of(context).unfocus();
+  // 1. PULL REAL DATA FROM SECURE VAULT
+  Future<void> _fetchUserData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        _emailController.text = user.email ?? "UNKNOWN CREDENTIAL";
 
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          _nameController.text = doc.data()?['name'] ?? "";
+        }
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch user data: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // 2. PUSH REAL DATA TO FIREBASE
+  Future<void> _saveChanges() async {
+    FocusScope.of(context).unfocus(); // Dismiss keyboard
+
+    if (_nameController.text.trim().isEmpty) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'name': _nameController.text.trim(),
+        });
+
+        if (mounted) {
+          _showSecureNotification("IDENTITY PROFILE UPDATED");
+          await Future.delayed(const Duration(milliseconds: 1000));
+          // SAFE POP: Prevents the blank white screen error
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+        }
+      }
+    } catch (e) {
+      _showSecureNotification("SYNC FAILED: CHECK CONNECTION", isError: true);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  void _showSecureNotification(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: Colors.transparent,
@@ -39,21 +89,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                border: Border.all(color: luxuryGold.withOpacity(0.5), width: 0.5),
+                color: isError ? Colors.redAccent.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05),
+                border: Border.all(color: isError ? Colors.redAccent.withValues(alpha: 0.5) : luxuryGold.withValues(alpha: 0.5), width: 0.5),
               ),
-              child: const Text(
-                "SECURING IDENTITY UPDATES...",
-                style: TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold),
+              child: Text(
+                message,
+                style: TextStyle(color: isError ? Colors.redAccent : Colors.white, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold),
               ),
             ),
           ),
         ),
       ),
     );
+  }
 
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (mounted) Navigator.pop(context);
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    super.dispose();
   }
 
   @override
@@ -77,7 +131,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                 // Frosted Glass Terminal
                 Expanded(
-                  child: SingleChildScrollView(
+                  child: _isLoading
+                      ? Center(child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5))
+                      : SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 25),
                     child: _buildModificationTerminal(),
@@ -88,7 +144,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
 
           // 3. Floating Action Bar
-          _buildBottomActionPanel(),
+          if (!_isLoading) _buildBottomActionPanel(),
+
+          // 4. Processing Overlay
+          if (_isSaving) _buildProcessingOverlay(),
         ],
       ),
     );
@@ -102,7 +161,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             center: const Alignment(0, -0.4),
             radius: 1.5,
             colors: [
-              luxuryGold.withOpacity(0.12),
+              luxuryGold.withValues(alpha: 0.12),
               Colors.black,
             ],
           ),
@@ -122,21 +181,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
-                onPressed: () => Navigator.pop(context),
+                // SAFE ROUTING: Prevents white screen crashes
+                onPressed: () => Navigator.maybePop(context),
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withOpacity(0.05),
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
                   padding: const EdgeInsets.all(16),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 20),
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("IDENTITY MANAGEMENT", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 6, fontWeight: FontWeight.bold)),
-              SizedBox(height: 4),
-              Text("EDIT LEGACY PROFILE", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 14, letterSpacing: 4, fontWeight: FontWeight.w900)),
+              const Text("IDENTITY MANAGEMENT", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 6, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text("EDIT LEGACY PROFILE", style: TextStyle(color: luxuryGold, fontSize: 14, letterSpacing: 4, fontWeight: FontWeight.w900)),
             ],
           ),
         ],
@@ -152,10 +212,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         child: Container(
           padding: const EdgeInsets.all(35),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.02),
-            border: Border.all(color: Colors.white.withOpacity(0.08), width: 0.5),
+            color: Colors.white.withValues(alpha: 0.02),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 40, spreadRadius: 10)
+              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 40, spreadRadius: 10)
             ],
           ),
           child: Column(
@@ -163,7 +223,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             children: [
               _buildEditorialField("FULL LEGAL NAME", Icons.person_outline_rounded, _nameController),
               const SizedBox(height: 35),
-              _buildEditorialField("MEMBER IDENTIFICATION", Icons.alternate_email_rounded, _emailController),
+              // Email is locked to prevent Auth desync crashes
+              _buildEditorialField("MEMBER IDENTIFICATION (LOCKED)", Icons.lock_outline_rounded, _emailController, isReadOnly: true),
             ],
           ),
         ),
@@ -171,26 +232,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     ).animate().fadeIn(duration: 800.ms, delay: 200.ms).slideY(begin: 0.1, end: 0);
   }
 
-  Widget _buildEditorialField(String label, IconData icon, TextEditingController controller) {
+  Widget _buildEditorialField(String label, IconData icon, TextEditingController controller, {bool isReadOnly = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
             label,
-            style: const TextStyle(color: Colors.white38, fontSize: 7, letterSpacing: 5, fontWeight: FontWeight.w900)
+            style: TextStyle(color: isReadOnly ? Colors.white24 : Colors.white38, fontSize: 7, letterSpacing: 5, fontWeight: FontWeight.w900)
         ),
         TextField(
           controller: controller,
-          style: const TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 2, fontWeight: FontWeight.w300),
+          readOnly: isReadOnly,
+          style: TextStyle(color: isReadOnly ? Colors.white38 : Colors.white, fontSize: 16, letterSpacing: 2, fontWeight: FontWeight.w300),
           cursorColor: luxuryGold,
           decoration: InputDecoration(
             prefixIcon: Padding(
               padding: const EdgeInsets.only(right: 15),
-              child: Icon(icon, color: luxuryGold.withOpacity(0.6), size: 18),
+              child: Icon(icon, color: isReadOnly ? Colors.white24 : luxuryGold.withValues(alpha: 0.6), size: 18),
             ),
             prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.5)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: luxuryGold, width: 1)),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: isReadOnly ? Colors.white.withValues(alpha: 0.1) : luxuryGold, width: 1)),
             contentPadding: const EdgeInsets.symmetric(vertical: 15),
           ),
         ),
@@ -209,8 +271,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Container(
             padding: const EdgeInsets.fromLTRB(25, 25, 25, 45), // Extra padding for iOS home bar
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
-              border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
+              color: Colors.black.withValues(alpha: 0.6),
+              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
             ),
             child: GestureDetector(
               onTap: _saveChanges,
@@ -218,10 +280,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 width: double.infinity,
                 height: 65,
                 decoration: BoxDecoration(
-                  color: luxuryGold.withOpacity(0.9),
+                  color: luxuryGold.withValues(alpha: 0.9),
                   border: Border.all(color: luxuryGold, width: 1),
                   boxShadow: [
-                    BoxShadow(color: luxuryGold.withOpacity(0.2), blurRadius: 30, offset: const Offset(0, 10))
+                    BoxShadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 30, offset: const Offset(0, 10))
                   ],
                 ),
                 child: Stack(
@@ -236,7 +298,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.white.withOpacity(0.0), Colors.white.withOpacity(0.4), Colors.white.withOpacity(0.0)],
+                            colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.4), Colors.white.withValues(alpha: 0.0)],
                             stops: const [0.0, 0.5, 1.0],
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
@@ -253,5 +315,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       ),
     ).animate().slideY(begin: 1.0, end: 0.0, duration: 800.ms, delay: 400.ms, curve: Curves.easeOutQuart);
+  }
+
+  Widget _buildProcessingOverlay() {
+    return Positioned.fill(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.5),
+          child: Center(
+            child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -100,7 +100,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
                 center: const Alignment(0, -0.3),
                 radius: 1.2,
                 colors: [
-                  luxuryGold.withOpacity(0.08),
+                  luxuryGold.withValues(alpha: 0.08),
                   Colors.black,
                 ],
               ),
@@ -111,7 +111,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
           // Grid lines to simulate a "secure digital vault" environment
           CustomPaint(
             size: Size.infinite,
-            painter: _SecurityGridPainter(color: Colors.white.withOpacity(0.02)),
+            painter: _SecurityGridPainter(color: Colors.white.withValues(alpha: 0.02)),
           ),
         ],
       ),
@@ -126,7 +126,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
           onPressed: () => Navigator.pop(context),
           style: IconButton.styleFrom(
-            backgroundColor: Colors.white.withOpacity(0.05),
+            backgroundColor: Colors.white.withValues(alpha: 0.05),
             padding: const EdgeInsets.all(16),
           ),
         ),
@@ -151,7 +151,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
                 fontWeight: FontWeight.w100,
                 height: 1.1,
                 letterSpacing: -1,
-                shadows: [Shadow(color: luxuryGold.withOpacity(0.2), blurRadius: 20)]
+                shadows: [Shadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 20)]
             )
         ),
       ],
@@ -166,10 +166,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
         child: Container(
           padding: const EdgeInsets.all(35),
           decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.02),
-              border: Border.all(color: Colors.white.withOpacity(0.05), width: 0.5),
+              color: Colors.white.withValues(alpha: 0.02),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30, spreadRadius: 10)
+                BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 10)
               ]
           ),
           child: Column(
@@ -181,7 +181,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
               _ledgerRow("BOUTIQUE DELIVERY", "INCLUDED"),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 35),
-                child: Divider(color: Colors.white.withOpacity(0.1), height: 1),
+                child: Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
               ),
               _ledgerRow("TOTAL SECURED", "\$${total.toStringAsFixed(2)}", isGold: true),
             ],
@@ -219,10 +219,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
         width: double.infinity,
         height: 75,
         decoration: BoxDecoration(
-            color: luxuryGold.withOpacity(0.9),
+            color: luxuryGold.withValues(alpha: 0.9),
             border: Border.all(color: luxuryGold, width: 1),
             boxShadow: [
-              BoxShadow(color: luxuryGold.withOpacity(0.15), blurRadius: 30, spreadRadius: 5)
+              BoxShadow(color: luxuryGold.withValues(alpha: 0.15), blurRadius: 30, spreadRadius: 5)
             ]
         ),
         child: Stack(
@@ -237,7 +237,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.white.withOpacity(0.0), Colors.white.withOpacity(0.4), Colors.white.withOpacity(0.0)],
+                    colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.4), Colors.white.withValues(alpha: 0.0)],
                     stops: const [0.0, 0.5, 1.0],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
@@ -261,7 +261,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
           return BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 30 * value, sigmaY: 30 * value),
             child: Container(
-              color: Colors.black.withOpacity(0.85 * value),
+              color: Colors.black.withValues(alpha: 0.85 * value),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -276,7 +276,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
                           Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: luxuryGold.withOpacity(0.2), width: 1),
+                              border: Border.all(color: luxuryGold.withValues(alpha: 0.2), width: 1),
                             ),
                           ),
                           Container(
@@ -284,10 +284,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
                             height: 80,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: luxuryGold.withOpacity(0.5), width: 0.5),
+                              border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
                             ),
                           ),
-                          Icon(Icons.fingerprint_rounded, color: luxuryGold.withOpacity(0.8), size: 40)
+                          Icon(Icons.fingerprint_rounded, color: luxuryGold.withValues(alpha: 0.8), size: 40)
                               .animate(onPlay: (c) => c.repeat(reverse: true))
                               .shimmer(duration: 2.seconds, color: Colors.white),
 

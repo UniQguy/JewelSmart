@@ -5,7 +5,8 @@ class InvoiceService {
   // Procedure Sync: Fulfills generateInvoice() in Class Diagram
   static Invoice generateInvoice(Product product, int userId) {
     // Calculates total using the Billing Controller logic
-    final double total = product.basePrice + product.makingCharges;
+    // FIXED: Changed 'basePrice' to 'price' to match the new live Product Blueprint
+    final double total = product.price + product.makingCharges;
     final double totalWithGst = total + (total * 0.03); // 3% GST
 
     return Invoice(

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data'; // CRITICAL: Replaces dart:io for web compatibility
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -12,6 +12,7 @@ import '../../auth/domain/product_model.dart';
 
 /// THE ARTISAN UPLOAD TERMINAL
 /// Engineered to push new 3D collections to Cloudinary and Firestore atomically.
+/// FULLY CROSS-PLATFORM (Web, iOS, Android).
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
 
@@ -30,7 +31,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final List<String> _categories = ['RINGS', 'NECKLACES', 'BRACELETS', 'EARRINGS', 'ESTATE'];
 
   bool _isLoading = false;
-  String? _selectedImagePath;
+
+  // FIXED: Using byte stream instead of a file path for Web compatibility
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageName;
 
   @override
   void dispose() {
@@ -40,9 +44,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     super.dispose();
   }
 
-  /// CLOUDINARY UPLOAD PIPELINE
-  Future<String?> _uploadToCloudinary(String imagePath) async {
-    // ⚠️ REPLACE WITH YOUR ACTUAL PRESET NAME FROM CLOUDINARY
+  /// CLOUDINARY UPLOAD PIPELINE (Web Safe)
+  Future<String?> _uploadToCloudinary(Uint8List imageBytes, String fileName) async {
     const String cloudName = 'dtmpvbon0';
     const String uploadPreset = 'jewelsmart_preset';
 
@@ -50,7 +53,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final request = http.MultipartRequest('POST', uri);
 
     request.fields['upload_preset'] = uploadPreset;
-    request.files.add(await http.MultipartFile.fromPath('file', imagePath));
+
+    // FIXED: Uploading raw bytes instead of reading from a local hard drive path
+    request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        imageBytes,
+        filename: fileName.isNotEmpty ? fileName : 'vault_asset.jpg'
+    ));
 
     final response = await request.send();
 
@@ -66,7 +75,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   /// MASTER SYNC PROTOCOL
   Future<void> _processUpload() async {
-    if (_selectedImagePath == null || _titleController.text.trim().isEmpty || _priceController.text.trim().isEmpty) {
+    if (_selectedImageBytes == null || _titleController.text.trim().isEmpty || _priceController.text.trim().isEmpty) {
       _showErrorSnackBar("COLLECTION DATA OR ASSET MISSING");
       return;
     }
@@ -74,8 +83,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Beam Asset to Cloudinary
-      final String? imageUrl = await _uploadToCloudinary(_selectedImagePath!);
+      // 1. Beam Asset to Cloudinary using Byte Stream
+      final String? imageUrl = await _uploadToCloudinary(_selectedImageBytes!, _selectedImageName ?? 'asset.jpg');
 
       if (imageUrl == null) {
         throw Exception("CDN Transmission Failed");
@@ -108,7 +117,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  /// DEVICE GALLERY ACCESS
+  /// DEVICE GALLERY ACCESS (Web Safe)
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
@@ -117,7 +126,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
 
     if (pickedFile != null) {
-      setState(() => _selectedImagePath = pickedFile.path);
+      // FIXED: Read the file as bytes into memory immediately
+      final bytes = await pickedFile.readAsBytes();
+      setState(() {
+        _selectedImageBytes = bytes;
+        _selectedImageName = pickedFile.name;
+      });
     }
   }
 
@@ -252,15 +266,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.5),
           border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
-          image: _selectedImagePath != null
+          // FIXED: Uses MemoryImage to render raw bytes instead of FileImage
+          image: _selectedImageBytes != null
               ? DecorationImage(
-            image: FileImage(File(_selectedImagePath!)),
+            image: MemoryImage(_selectedImageBytes!),
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.3), BlendMode.darken),
           )
               : null,
         ),
-        child: _selectedImagePath == null
+        child: _selectedImageBytes == null
             ? Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
