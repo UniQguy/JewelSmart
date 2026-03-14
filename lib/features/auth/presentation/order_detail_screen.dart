@@ -1,11 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // CRITICAL: Added for Haptic Feedback
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../domain/purchase_model.dart';
 
 /// THE CERTIFICATE OF AUTHENTICITY (ORDER DETAIL)
 /// Engineered as a highly secure, spatial glassmorphic authenticity document.
+/// FIXED: Web Scaling, INR (₹) Currency, and Haptic Physics applied.
 class OrderDetailScreen extends StatelessWidget {
   final PurchaseRecord purchase;
 
@@ -13,34 +15,40 @@ class OrderDetailScreen extends StatelessWidget {
 
   final Color luxuryGold = const Color(0xFFD4AF37);
 
-  // Function to simulate secure PDF generation
+  // Function to simulate secure PDF generation/download
   void _generateInvoice(BuildContext context) {
+    HapticFeedback.mediumImpact(); // Tactile confirmation
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         behavior: SnackBarBehavior.floating,
-        content: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
-              ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 15, height: 15,
-                    child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5),
+        content: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600), // Web Scaler for Notifications
+            child: ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
                   ),
-                  const SizedBox(width: 15),
-                  const Text(
-                    "MINTING SECURE LEGACY DOCUMENT...",
-                    style: TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 15, height: 15,
+                        child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5),
+                      ),
+                      const SizedBox(width: 15),
+                      const Text(
+                        "MINTING SECURE LEGACY DOCUMENT...",
+                        style: TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -69,12 +77,17 @@ class OrderDetailScreen extends StatelessWidget {
                 _buildHeader(context),
                 const SizedBox(height: 30),
 
-                // 3. The Certificate of Authenticity
+                // 3. The Certificate of Authenticity (Web Scaled)
                 Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(25, 0, 25, 120),
-                    child: _buildCertificateTerminal(),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 800), // Magazine Column Layout
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(25, 0, 25, 120),
+                        child: _buildCertificateTerminal(),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -116,33 +129,41 @@ class OrderDetailScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          ClipOval(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
-                onPressed: () => Navigator.pop(context),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.05),
-                  padding: const EdgeInsets.all(16),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800), // Align header with document
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              ClipOval(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.maybePop(context);
+                    },
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.05),
+                      padding: const EdgeInsets.all(16),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 20),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("ARCHIVE RECORD", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 6, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text("DOCUMENT VIEW", style: TextStyle(color: luxuryGold, fontSize: 14, letterSpacing: 4, fontWeight: FontWeight.w900)),
+              const SizedBox(width: 20),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("ARCHIVE RECORD", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 6, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text("DOCUMENT VIEW", style: TextStyle(color: luxuryGold, fontSize: 14, letterSpacing: 4, fontWeight: FontWeight.w900)),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.1, end: 0);
   }
@@ -211,7 +232,8 @@ class OrderDetailScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      _buildDetailRow("ACQUISITION VALUE", "\$${purchase.amountPaid.toStringAsFixed(2)}", isGold: true),
+                      // FIXED: Displaying INR instead of Dollars
+                      _buildDetailRow("ACQUISITION VALUE", "₹${purchase.amountPaid.toStringAsFixed(2)}", isGold: true),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 15),
                         child: Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
@@ -300,49 +322,54 @@ class OrderDetailScreen extends StatelessWidget {
       bottom: 0,
       left: 0,
       right: 0,
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(25, 25, 25, 45), // Extra padding for iOS home bar
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.6),
-              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
-            ),
-            child: GestureDetector(
-              onTap: () => _generateInvoice(context),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800), // Web Scaler Constraint
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
-                width: double.infinity,
-                height: 65,
+                padding: const EdgeInsets.fromLTRB(25, 25, 25, 45), // Extra padding for iOS home bar
                 decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    border: Border.all(color: luxuryGold, width: 0.5),
-                    boxShadow: [
-                      BoxShadow(color: luxuryGold.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: 2)
-                    ]
+                  color: Colors.black.withValues(alpha: 0.6),
+                  border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
                 ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Text(
-                        "DOWNLOAD DIGITAL CERTIFICATE",
-                        style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 9)
+                child: GestureDetector(
+                  onTap: () => _generateInvoice(context),
+                  child: Container(
+                    width: double.infinity,
+                    height: 65,
+                    decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        border: Border.all(color: luxuryGold, width: 0.5),
+                        boxShadow: [
+                          BoxShadow(color: luxuryGold.withValues(alpha: 0.05), blurRadius: 20, spreadRadius: 2)
+                        ]
                     ),
-                    // Sweeping light effect
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.2), Colors.white.withValues(alpha: 0.0)],
-                            stops: const [0.0, 0.5, 1.0],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Text(
+                            "DOWNLOAD DIGITAL CERTIFICATE",
+                            style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 9)
                         ),
-                      ).animate(onPlay: (c) => c.repeat(reverse: false))
-                          .slideX(begin: -2.0, end: 2.0, duration: 3.seconds, curve: Curves.easeInOutSine),
+                        // Sweeping light effect
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.2), Colors.white.withValues(alpha: 0.0)],
+                                stops: const [0.0, 0.5, 1.0],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                            ),
+                          ).animate(onPlay: (c) => c.repeat(reverse: false))
+                              .slideX(begin: -2.0, end: 2.0, duration: 3.seconds, curve: Curves.easeInOutSine),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

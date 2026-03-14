@@ -1,15 +1,16 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // CRITICAL: Added for Haptic Feedback
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../domain/product_model.dart';
-// CRITICAL: Import the Wishlist Provider to enable saving
 import '../../wishlist/providers/wishlist_provider.dart';
 
 /// THE EDITORIAL PRODUCT VIEW
-/// Engineered for 3D spatial depth, immersive parallax, responsive web scaling, and premium boutique interactions.
+/// Engineered for 3D spatial depth, immersive parallax, real-time reviews, and INR currency.
 class ProductDetailPage extends ConsumerStatefulWidget {
   const ProductDetailPage({super.key});
 
@@ -36,9 +37,147 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
     super.dispose();
   }
 
+  // --- THE REVIEW ATELIER (BOTTOM SHEET) ---
+  void _showReviewAtelier(BuildContext context, String productId) {
+    int selectedRating = 5;
+    final TextEditingController reviewController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+          child: StatefulBuilder(
+            builder: (context, setSheetState) {
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600), // Web Scaler
+                  child: ClipRRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(25, 30, 25, 25),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          border: Border(
+                            top: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
+                            left: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
+                            right: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Center(child: Container(width: 40, height: 2, color: Colors.white24)),
+                            const SizedBox(height: 30),
+                            Text("SEAL YOUR IMPRESSION", style: TextStyle(color: luxuryGold, fontSize: 12, letterSpacing: 6, fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 40),
+
+                            // Interactive Star Rating
+                            const Text("EVALUATION", style: TextStyle(color: Colors.white38, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 6)),
+                            const SizedBox(height: 15),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: List.generate(5, (index) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    setSheetState(() => selectedRating = index + 1);
+                                  },
+                                  child: Icon(
+                                    index < selectedRating ? Icons.star_rounded : Icons.star_border_rounded,
+                                    color: index < selectedRating ? luxuryGold : Colors.white24,
+                                    size: 40,
+                                  ),
+                                );
+                              }),
+                            ),
+                            const SizedBox(height: 40),
+
+                            // Review Text Input
+                            const Text("YOUR LEGACY COMMENT", style: TextStyle(color: Colors.white38, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 6)),
+                            const SizedBox(height: 10),
+                            TextField(
+                              controller: reviewController,
+                              maxLines: 3,
+                              style: const TextStyle(color: Colors.white, fontSize: 14, letterSpacing: 1.5, fontWeight: FontWeight.w300),
+                              cursorColor: luxuryGold,
+                              decoration: InputDecoration(
+                                hintText: "Describe the craftsmanship...",
+                                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 10),
+                                // FIXED: Changed OutlineBorder to OutlineInputBorder
+                                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5)),
+                                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: luxuryGold, width: 1)),
+                                filled: true,
+                                fillColor: Colors.white.withValues(alpha: 0.02),
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+
+                            // Submit Button
+                            SizedBox(
+                              width: double.infinity,
+                              height: 60,
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: luxuryGold, width: 0.5),
+                                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                                  backgroundColor: luxuryGold.withValues(alpha: 0.1),
+                                ),
+                                onPressed: () async {
+                                  HapticFeedback.mediumImpact();
+                                  await _submitReview(productId, selectedRating, reviewController.text);
+                                  if (context.mounted) Navigator.pop(context);
+                                },
+                                child: const Text("IMMORTALIZE IMPRESSION", style: TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 4, fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _submitReview(String productId, int rating, String comment) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Fetch user's actual name
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final userName = userDoc.exists ? (userDoc.data()?['name'] ?? 'VIP CLIENT') : 'VIP CLIENT';
+
+      // Push to Subcollection
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(productId)
+          .collection('reviews')
+          .add({
+        'userId': user.uid,
+        'userName': userName,
+        'rating': rating,
+        'comment': comment.trim(),
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint("Failed to submit review: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Safety check for arguments passed via Navigator
     final product = ModalRoute.of(context)!.settings.arguments as Product;
 
     return Scaffold(
@@ -46,10 +185,9 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Ambient back-glow to simulate 3D space
           _buildAmbientBackdrop(),
 
-          // MAIN SCROLL CONTENT (Secured with Web Scaler)
+          // MAIN SCROLL CONTENT
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 800), // Editorial Column width
@@ -70,9 +208,14 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                           const SizedBox(height: 40),
                           _buildPriceSection(product),
                           const SizedBox(height: 40),
-                          _buildDescriptionSection(product), // Now uses real database description
+                          _buildDescriptionSection(product),
                           const SizedBox(height: 50),
                           _buildBoutiqueSpecifications(product),
+                          const SizedBox(height: 60),
+
+                          // NEW: The Live Review Engine
+                          _buildReviewsSection(product.id),
+
                           const SizedBox(height: 150), // Buffer for the acquisition bar
                         ],
                       ),
@@ -85,7 +228,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
 
           // FLOATING ACTIONS
           _buildBackAction(context),
-          _buildWishlistAction(product), // NEW: The Save Button
+          _buildWishlistAction(product),
           _buildBottomAcquisitionBar(context, ref, product),
         ],
       ),
@@ -99,10 +242,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
           gradient: RadialGradient(
             center: const Alignment(0, -0.5),
             radius: 1.2,
-            colors: [
-              luxuryGold.withValues(alpha: 0.08),
-              Colors.black,
-            ],
+            colors: [luxuryGold.withValues(alpha: 0.08), Colors.black],
           ),
         ),
       ),
@@ -115,28 +255,22 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
       automaticallyImplyLeading: false,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      stretch: true, // Enables the 3D pull-to-stretch effect
+      stretch: true,
       flexibleSpace: FlexibleSpaceBar(
         stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // The 3D Hero Pop
             Hero(
               tag: 'product_image_${product.id}',
               child: _buildNetworkImage(product),
             ),
-            // Volumetric Lighting Overlay
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.5),
-                    Colors.transparent,
-                    Colors.black,
-                  ],
+                  colors: [Colors.black.withValues(alpha: 0.5), Colors.transparent, Colors.black],
                   stops: const [0.0, 0.5, 1.0],
                 ),
               ),
@@ -147,71 +281,31 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
     );
   }
 
-  // CINEMATIC CLOUDINARY IMAGE LOADER
   Widget _buildNetworkImage(Product product) {
     if (product.imageUrl.isEmpty) {
-      return Container(
-        color: Colors.black,
-        child: Center(
-          child: Icon(Icons.diamond_outlined, color: luxuryGold.withValues(alpha: 0.2), size: 40),
-        ),
-      );
+      return Container(color: Colors.black, child: Center(child: Icon(Icons.diamond_outlined, color: luxuryGold.withValues(alpha: 0.2), size: 40)));
     }
-
     return Image.network(
       product.imageUrl,
       fit: BoxFit.cover,
-      alignment: Alignment(0, (_scrollOffset * 0.001).clamp(-1.0, 1.0)), // Dynamic Parallax
-      loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+      alignment: Alignment(0, (_scrollOffset * 0.001).clamp(-1.0, 1.0)),
+      loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return Container(
           color: Colors.black,
-          child: Center(
-            child: SizedBox(
-              width: 30,
-              height: 30,
-              child: CircularProgressIndicator(
-                color: luxuryGold.withValues(alpha: 0.5),
-                strokeWidth: 1.5,
-              ),
-            ),
-          ),
+          child: Center(child: SizedBox(width: 30, height: 30, child: CircularProgressIndicator(color: luxuryGold.withValues(alpha: 0.5), strokeWidth: 1.5))),
         ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 800.ms);
       },
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: Colors.black,
-          child: Center(
-            child: Icon(Icons.broken_image_outlined, color: Colors.white.withValues(alpha: 0.1), size: 40),
-          ),
-        );
-      },
+      errorBuilder: (context, error, stackTrace) => Container(color: Colors.black, child: Center(child: Icon(Icons.broken_image_outlined, color: Colors.white.withValues(alpha: 0.1), size: 40))),
     );
   }
 
   Widget _buildBrandHeader() {
-    return const Text(
-      "PRIVATE COLLECTION • 2026",
-      style: TextStyle(
-        color: Colors.white24,
-        fontSize: 8,
-        letterSpacing: 5,
-        fontWeight: FontWeight.w900,
-      ),
-    ).animate().fadeIn(duration: 800.ms, delay: 200.ms);
+    return const Text("PRIVATE COLLECTION • 2026", style: TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 5, fontWeight: FontWeight.w900)).animate().fadeIn(duration: 800.ms, delay: 200.ms);
   }
 
   Widget _buildEditorialTitle(Product product) {
-    return Text(
-      product.title.toUpperCase(),
-      style: TextStyle(
-        color: luxuryGold,
-        fontSize: 34,
-        fontWeight: FontWeight.w100,
-        letterSpacing: 2,
-        height: 1.1,
-      ),
-    ).animate().fadeIn(duration: 800.ms, delay: 300.ms).slideX(begin: -0.05, end: 0);
+    return Text(product.title.toUpperCase(), style: TextStyle(color: luxuryGold, fontSize: 34, fontWeight: FontWeight.w100, letterSpacing: 2, height: 1.1)).animate().fadeIn(duration: 800.ms, delay: 300.ms).slideX(begin: -0.05, end: 0);
   }
 
   Widget _buildPriceSection(Product product) {
@@ -219,28 +313,18 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "\$${product.totalPayableAmount.toStringAsFixed(2)}",
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 26,
-            fontWeight: FontWeight.w300,
-            letterSpacing: 2,
-          ),
+          "₹${product.totalPayableAmount.toStringAsFixed(2)}",
+          style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w300, letterSpacing: 2),
         ),
         const SizedBox(height: 4),
-        const Text(
-          "INCLUDES 3% GST & HANDCRAFTING CHARGES",
-          style: TextStyle(color: Colors.white24, fontSize: 7, letterSpacing: 2, fontWeight: FontWeight.bold),
-        ),
+        const Text("INCLUDES 3% GST & HANDCRAFTING CHARGES", style: TextStyle(color: Colors.white24, fontSize: 7, letterSpacing: 2, fontWeight: FontWeight.bold)),
       ],
     ).animate().fadeIn(duration: 800.ms, delay: 400.ms);
   }
 
   Widget _buildDescriptionSection(Product product) {
     return Text(
-      product.description.isNotEmpty
-          ? product.description
-          : "A masterpiece of artisanal precision, this piece represents the pinnacle of the 2026 legacy collection. Each facet is hand-finished to ensure a reflection of absolute purity.",
+      product.description.isNotEmpty ? product.description : "A masterpiece of artisanal precision, this piece represents the pinnacle of the 2026 legacy collection.",
       style: const TextStyle(color: Colors.white60, fontSize: 11, height: 1.8, letterSpacing: 0.5, fontWeight: FontWeight.w300),
     ).animate().fadeIn(duration: 800.ms, delay: 500.ms);
   }
@@ -252,9 +336,92 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
         _divider(),
         _specRow("WEIGHT", "${product.weight}G"),
         _divider(),
-        _specRow("MAKING", "\$${product.makingCharges}"),
+        _specRow("MAKING", "₹${product.makingCharges}"),
       ],
     ).animate().fadeIn(duration: 800.ms, delay: 600.ms);
+  }
+
+  // --- LIVE REVIEWS SECTION ---
+  Widget _buildReviewsSection(String productId) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text("CLIENT IMPRESSIONS", style: TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 5, fontWeight: FontWeight.w900)),
+            GestureDetector(
+              onTap: () => _showReviewAtelier(context, productId),
+              child: Text("LEAVE IMPRESSION", style: TextStyle(color: luxuryGold, fontSize: 8, letterSpacing: 2, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('products').doc(productId).collection('reviews').orderBy('timestamp', descending: true).snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1));
+            }
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Text("BE THE FIRST TO SEAL AN IMPRESSION OF THIS ARTIFACT.", style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, fontStyle: FontStyle.italic)),
+              );
+            }
+
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: snapshot.data!.docs.length,
+              itemBuilder: (context, index) {
+                final data = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                final name = data['userName'] ?? 'VIP CLIENT';
+                final comment = data['comment'] ?? '';
+                final rating = data['rating'] ?? 5;
+
+                return _buildReviewCard(name, comment, rating);
+              },
+            );
+          },
+        ),
+      ],
+    ).animate().fadeIn(duration: 800.ms, delay: 700.ms);
+  }
+
+  Widget _buildReviewCard(String name, String comment, int rating) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.02),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(name.toUpperCase(), style: const TextStyle(color: Colors.white70, fontSize: 9, letterSpacing: 3, fontWeight: FontWeight.bold)),
+              Row(
+                children: List.generate(5, (index) => Icon(
+                  index < rating ? Icons.star_rounded : Icons.star_border_rounded,
+                  color: index < rating ? luxuryGold : Colors.white24,
+                  size: 12,
+                )),
+              ),
+            ],
+          ),
+          if (comment.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(comment, style: const TextStyle(color: Colors.white54, fontSize: 11, height: 1.5, fontWeight: FontWeight.w300)),
+          ]
+        ],
+      ),
+    );
   }
 
   Widget _divider() {
@@ -281,7 +448,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
       right: 0,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800), // Aligns with the main body on web
+          constraints: const BoxConstraints(maxWidth: 800),
           child: ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
@@ -293,7 +460,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                 ),
                 child: GestureDetector(
                   onTap: () {
-                    HapticFeedback.mediumImpact(); // Tactile confirmation
+                    HapticFeedback.mediumImpact();
                     ref.read(cartProvider.notifier).addItem(product);
                     _showSuccessNotification(context);
                   },
@@ -303,15 +470,10 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                     decoration: BoxDecoration(
                       color: Colors.transparent,
                       border: Border.all(color: luxuryGold.withValues(alpha: 0.8), width: 0.5),
-                      boxShadow: [
-                        BoxShadow(color: luxuryGold.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: -10)
-                      ],
+                      boxShadow: [BoxShadow(color: luxuryGold.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: -10)],
                     ),
                     child: Center(
-                      child: Text(
-                        "ACQUIRE PIECE",
-                        style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, letterSpacing: 8, fontSize: 9),
-                      ),
+                      child: Text("ACQUIRE PIECE", style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, letterSpacing: 8, fontSize: 9)),
                     ),
                   ),
                 ),
@@ -333,7 +495,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
         duration: const Duration(seconds: 3),
         content: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600), // Web safety
+            constraints: const BoxConstraints(maxWidth: 600),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(0),
               child: BackdropFilter(
@@ -348,10 +510,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                     children: [
                       Icon(Icons.check_circle_outline, color: luxuryGold, size: 18),
                       const SizedBox(width: 15),
-                      const Text(
-                        "PIECE SECURED IN VAULT",
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 3, fontSize: 8),
-                      ),
+                      const Text("PIECE SECURED IN VAULT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 3, fontSize: 8)),
                     ],
                   ),
                 ),
@@ -374,19 +533,15 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
             onPressed: () {
               HapticFeedback.selectionClick();
-              Navigator.maybePop(context); // Safe routing
+              Navigator.maybePop(context);
             },
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.black.withValues(alpha: 0.2),
-              padding: const EdgeInsets.all(12),
-            ),
+            style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.2), padding: const EdgeInsets.all(12)),
           ),
         ),
       ),
     );
   }
 
-  // THE NEW CURATION ACTION: Save to Wishlist Hookup
   Widget _buildWishlistAction(Product product) {
     return Positioned(
       top: MediaQuery.of(context).padding.top + 10,
@@ -405,15 +560,11 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                       size: 16
                   ),
                   onPressed: () {
-                    HapticFeedback.lightImpact(); // Tactile feel
+                    HapticFeedback.lightImpact();
                     ref.read(wishlistProvider.notifier).toggleWishlist(product);
-                    // Forces a rebuild of just this consumer to show the heart fill instantly
                     setState(() {});
                   },
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.black.withValues(alpha: 0.2),
-                    padding: const EdgeInsets.all(12),
-                  ),
+                  style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.2), padding: const EdgeInsets.all(12)),
                 ),
               ),
             );

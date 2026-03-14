@@ -1,54 +1,30 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart'; // CRITICAL: Added for Haptic Feedback
 import 'package:flutter_animate/flutter_animate.dart';
 
 // Core Imports
 import '../../../core/router/app_routes.dart';
-import '../providers/cart_provider.dart';
-import '../providers/inventory_provider.dart';
-import '../../auth/domain/product_model.dart';
 
 /// THE LEGACY CONFIRMATION (SUCCESS)
-/// Engineered as a premium, cinematic unboxing experience with atomic inventory finalization.
-class SuccessPage extends ConsumerStatefulWidget {
+/// Engineered as a premium, cinematic unboxing experience.
+/// (Database injection and cart wiping are securely handled by the Checkout Protocol prior to routing here).
+class SuccessPage extends StatefulWidget {
   const SuccessPage({super.key});
 
   @override
-  ConsumerState<SuccessPage> createState() => _SuccessPageState();
+  State<SuccessPage> createState() => _SuccessPageState();
 }
 
-class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderStateMixin {
+class _SuccessPageState extends State<SuccessPage> {
   final Color luxuryGold = const Color(0xFFD4AF37);
   late String _vaultId;
 
   @override
   void initState() {
     super.initState();
-    // Generate a unique, high-end looking ID for the receipt
+    // Generate a unique, high-end looking ID for the receipt display
     _vaultId = "JS-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}";
-
-    // Logic Sync: Finalize the acquisition as soon as the vault opens
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _finalizeAcquisition();
-    });
-  }
-
-  void _finalizeAcquisition() {
-    // 1. Capture the current cart state before clearing it
-    final cartItems = ref.read(cartProvider);
-
-    // 2. Atomic Inventory Update: Deduct stock for all items
-    for (var item in cartItems) {
-      // FIXED: Uses the consistent productId alias (String)
-      ref.read(inventoryProvider.notifier).stockOut(
-          item.product.productId,
-          item.quantity
-      );
-    }
-
-    // 3. Clear the Vault for future acquisitions
-    ref.read(cartProvider.notifier).clearCart();
   }
 
   @override
@@ -61,17 +37,23 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
           _buildCinematicBackground(),
 
           Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildAnimatedVaultIcon(),
-                const SizedBox(height: 50),
-                _buildSuccessMessage(),
-                const SizedBox(height: 70),
-                _buildAcquisitionSummary(),
-                const SizedBox(height: 90),
-                _buildReturnAction(),
-              ],
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800), // Web Scaler
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildAnimatedVaultIcon(),
+                    const SizedBox(height: 50),
+                    _buildSuccessMessage(),
+                    const SizedBox(height: 70),
+                    _buildAcquisitionSummary(),
+                    const SizedBox(height: 90),
+                    _buildReturnAction(),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -215,7 +197,11 @@ class _SuccessPageState extends ConsumerState<SuccessPage> with TickerProviderSt
 
   Widget _buildReturnAction() {
     return GestureDetector(
-      onTap: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.main, (route) => false),
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.main, (route) => false);
+      },
+      behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 22),
         decoration: BoxDecoration(

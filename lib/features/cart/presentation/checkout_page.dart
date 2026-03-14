@@ -1,12 +1,16 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/router/app_routes.dart';
 import '../providers/cart_provider.dart';
 
 /// THE SECURITY PROTOCOL (CHECKOUT)
 /// Engineered as a high-caliber authentication interface with biometric-style 3D processing.
+/// FULLY WIRED: Writes directly to Firestore and clears the local Cart.
 class CheckoutPage extends ConsumerStatefulWidget {
   const CheckoutPage({super.key});
 
@@ -34,21 +38,95 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
     super.dispose();
   }
 
-  void _handlePayment() async {
+  // CRITICAL FIX: The Phantom Checkout Bug is resolved.
+  // This function now securely transacts with the live Firestore database.
+  Future<void> _handlePayment() async {
+    final cartItems = ref.read(cartProvider);
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (cartItems.isEmpty || userId == null) {
+      _showErrorNotification("VAULT IS EMPTY OR IDENTITY UNVERIFIED");
+      return;
+    }
+
+    HapticFeedback.heavyImpact(); // Tactile authorization
     setState(() => _isProcessing = true);
     _scanController.repeat(reverse: true);
 
-    // World-Class Security Simulation: Bio-metric & Gateway check
-    await Future.delayed(const Duration(seconds: 4));
+    try {
+      // 1. Initialize a Firestore Batch to process the entire cart securely
+      final batch = FirebaseFirestore.instance.batch();
 
-    if (mounted) {
-      _scanController.stop();
-      // Optional: Clear the cart here if your cartProvider has a clear() method
-      // ref.read(cartProvider.notifier).clearCart();
+      for (var item in cartItems) {
+        final docRef = FirebaseFirestore.instance.collection('purchases').doc();
 
-      // Transition to Success Page triggers the final Root Document update
-      Navigator.pushReplacementNamed(context, AppRoutes.success);
+        // Exact Indian Market Math: Calculate the final price including the 3% GST
+        final double itemBaseTotal = item.product.totalPayableAmount * item.quantity;
+        final double itemFinalTotal = itemBaseTotal + (itemBaseTotal * 0.03);
+
+        batch.set(docRef, {
+          'userId': userId,
+          'productId': item.product.id,
+          'productName': item.product.title, // Exact map to the Admin/Staff dashboards
+          'quantity': item.quantity,
+          'amountPaid': itemFinalTotal,      // The exact Rupee value processed
+          'status': 'PROCESSING',            // Initial Logistics State
+          'purchaseDate': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // 2. Commit the payload to the Cloud Matrix
+      await batch.commit();
+
+      // 3. Clear the Cart securely using the Riverpod Provider
+      ref.read(cartProvider.notifier).clearCart();
+
+      // 4. Immersive Security Delay (UX)
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (mounted) {
+        _scanController.stop();
+        HapticFeedback.lightImpact();
+        Navigator.pushReplacementNamed(context, AppRoutes.success);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _scanController.stop();
+        _showErrorNotification("SECURE GATEWAY REJECTED. TRY AGAIN.");
+      }
     }
+  }
+
+  void _showErrorNotification(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        behavior: SnackBarBehavior.floating,
+        content: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.1),
+                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 0.5),
+                  ),
+                  child: Text(
+                    message,
+                    style: const TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -62,23 +140,29 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
           // 1. Deep Spatial Background
           _buildSecurityBackground(),
 
-          // 2. Main Interface
+          // 2. Main Interface (Web Scaled)
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  _buildBackButton(),
-                  const SizedBox(height: 40),
-                  _buildBrandHeroText(),
-                  const SizedBox(height: 60),
-                  _buildSummaryLedger(totalAmount),
-                  const Spacer(),
-                  _buildSecureAction(),
-                  const SizedBox(height: 40),
-                ],
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      _buildBackButton(),
+                      const SizedBox(height: 40),
+                      _buildBrandHeroText(),
+                      const SizedBox(height: 60),
+                      _buildSummaryLedger(totalAmount),
+                      const SizedBox(height: 60),
+                      _buildSecureAction(),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -108,7 +192,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
           ).animate(onPlay: (c) => c.repeat(reverse: true))
               .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 8.seconds),
 
-          // Grid lines to simulate a "secure digital vault" environment
+          // Faint security grid
           CustomPaint(
             size: Size.infinite,
             painter: _SecurityGridPainter(color: Colors.white.withValues(alpha: 0.02)),
@@ -124,7 +208,10 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            Navigator.pop(context);
+          },
           style: IconButton.styleFrom(
             backgroundColor: Colors.white.withValues(alpha: 0.05),
             padding: const EdgeInsets.all(16),
@@ -158,9 +245,13 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
     ).animate().fadeIn(duration: 800.ms).slideX(begin: -0.1, end: 0);
   }
 
+  // Real Indian Tax Logic (3% GST) + Rupee Currency
   Widget _buildSummaryLedger(double total) {
+    final double gstAmount = total * 0.03;
+    final double finalAmount = total + gstAmount;
+
     return ClipRRect(
-      borderRadius: BorderRadius.circular(0), // High-fashion square edges
+      borderRadius: BorderRadius.circular(0),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
@@ -174,7 +265,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
           ),
           child: Column(
             children: [
-              _ledgerRow("ACQUISITION VALUE", "\$${total.toStringAsFixed(2)}"),
+              _ledgerRow("ACQUISITION VALUE", "₹${total.toStringAsFixed(2)}"),
+              const SizedBox(height: 25),
+              _ledgerRow("ESTIMATED GST (3%)", "₹${gstAmount.toStringAsFixed(2)}"),
               const SizedBox(height: 25),
               _ledgerRow("SECURITY & INSURANCE", "INCLUDED"),
               const SizedBox(height: 25),
@@ -183,7 +276,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
                 padding: const EdgeInsets.symmetric(vertical: 35),
                 child: Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
               ),
-              _ledgerRow("TOTAL SECURED", "\$${total.toStringAsFixed(2)}", isGold: true),
+              _ledgerRow("TOTAL SECURED", "₹${finalAmount.toStringAsFixed(2)}", isGold: true),
             ],
           ),
         ),

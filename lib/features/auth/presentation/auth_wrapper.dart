@@ -10,7 +10,7 @@ import 'staff_dashboard.dart';
 import 'admin_dashboard.dart';
 
 /// WORLD-CLASS AUTHENTICATION GATEKEEPER
-/// Optimized for seamless role-based routing and uninterrupted 3D spatial continuity.
+/// Optimized for seamless role-based routing, spatial continuity, and cinematic crossfading.
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -21,56 +21,69 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        Widget nextScreen;
+
         // 1. SESSION INITIALIZING: Cinematic Entry
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return _cinematicLoader(luxuryGold);
+          nextScreen = _cinematicLoader(luxuryGold, key: const ValueKey('loader_auth'));
         }
 
         // 2. AUTHENTICATED STATE: Optimized Role-Check
-        if (snapshot.hasData && snapshot.data != null) {
+        else if (snapshot.hasData && snapshot.data != null) {
           final User user = snapshot.data!;
 
-          return StreamBuilder<DocumentSnapshot>(
+          nextScreen = StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('users')
                 .doc(user.uid)
                 .snapshots(),
             builder: (context, userSnapshot) {
               if (userSnapshot.connectionState == ConnectionState.waiting) {
-                return _cinematicLoader(luxuryGold);
+                return _cinematicLoader(luxuryGold, key: const ValueKey('loader_doc'));
               }
 
               // Default to 'customer'
               String role = 'customer';
               if (userSnapshot.hasData && userSnapshot.data!.exists) {
                 final data = userSnapshot.data!.data() as Map<String, dynamic>;
-                // FIXED: Normalize to lowercase to match your Firestore entries exactly
                 role = (data['role'] ?? 'customer').toString().toLowerCase();
               }
 
-              // High-Caliber Routing Logic
+              // High-Caliber Routing Logic (Secured with ValueKeys for smooth transitions)
               switch (role) {
                 case "admin":
-                  return const AdminDashboard();
+                  return const AdminDashboard(key: ValueKey('admin_dash'));
                 case "staff":
-                  return const StaffDashboard();
+                  return const StaffDashboard(key: ValueKey('staff_dash'));
                 default:
-                  return const MainWrapper();
+                  return const MainWrapper(key: ValueKey('customer_dash'));
               }
             },
           );
         }
 
         // 3. UNAUTHENTICATED: The Private Vault Entrance
-        return const LoginPage();
+        else {
+          nextScreen = const LoginPage(key: ValueKey('login_page'));
+        }
+
+        // 4. THE LIQUID TRANSITION ENGINE
+        // Eliminates UI flickering and creates a premium fade between auth states.
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 1200),
+          switchInCurve: Curves.easeOutExpo,
+          switchOutCurve: Curves.easeInExpo,
+          child: nextScreen,
+        );
       },
     );
   }
 
   /// LUXURY INITIALIZER
   /// Replaces the default loader with a premium, spatially deep transition.
-  Widget _cinematicLoader(Color color) {
+  Widget _cinematicLoader(Color color, {required Key key}) {
     return Scaffold(
+      key: key,
       backgroundColor: Colors.black,
       body: Stack(
         children: [

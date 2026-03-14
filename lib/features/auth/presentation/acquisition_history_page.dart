@@ -1,16 +1,17 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // CRITICAL: Added for Haptic Feedback
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../auth/domain/purchase_model.dart';
-// CRITICAL: Removed MockPurchaseRepository. We are strictly live now.
 import '../../auth/presentation/order_detail_screen.dart';
 
 /// THE ENCRYPTED ARCHIVE (ACQUISITION HISTORY)
 /// Engineered as a high-security spatial ledger for VIP clients.
+/// FIXED: Web Scaling and INR (₹) Currency Applied.
 class AcquisitionHistoryPage extends StatefulWidget {
   const AcquisitionHistoryPage({super.key});
 
@@ -43,7 +44,7 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
     final currentUser = FirebaseAuth.instance.currentUser;
     final archiveStream = currentUser != null
         ? FirebaseFirestore.instance
-        .collection('purchases') // Ensure this matches your actual DB collection name
+        .collection('purchases')
         .where('userId', isEqualTo: currentUser.uid)
         .orderBy('purchaseDate', descending: true)
         .snapshots()
@@ -58,38 +59,43 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
           // 1. Deep Spatial Security Grid
           _buildAmbientSecurityBackground(),
 
-          // 2. The Live Data Ledger
+          // 2. The Live Data Ledger (Web Scaled)
           SafeArea(
             bottom: false,
-            child: StreamBuilder<QuerySnapshot>(
-              stream: archiveStream as Stream<QuerySnapshot>?,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return _buildProcessingState();
-                }
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800), // Web Scaler
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: archiveStream as Stream<QuerySnapshot>?,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return _buildProcessingState();
+                    }
 
-                if (snapshot.hasError) {
-                  return _buildErrorState();
-                }
+                    if (snapshot.hasError) {
+                      return _buildErrorState();
+                    }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return _buildEmptyVault();
-                }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return _buildEmptyVault();
+                    }
 
-                // Map live Firestore documents to the PurchaseRecord model
-                final history = snapshot.data!.docs.map((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  return PurchaseRecord(
-                    orderId: doc.id, // Using Firestore Document ID as the Order ID
-                    productName: data['productName'] ?? 'UNKNOWN ARTIFACT',
-                    status: data['status'] ?? 'PROCESSING',
-                    purchaseDate: (data['purchaseDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-                    amountPaid: (data['amountPaid'] ?? 0.0).toDouble(),
-                  );
-                }).toList();
+                    // Map live Firestore documents to the PurchaseRecord model
+                    final history = snapshot.data!.docs.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return PurchaseRecord(
+                        orderId: doc.id,
+                        productName: data['productName'] ?? 'UNKNOWN ARTIFACT',
+                        status: data['status'] ?? 'PROCESSING',
+                        purchaseDate: (data['purchaseDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+                        amountPaid: (data['amountPaid'] ?? 0.0).toDouble(),
+                      );
+                    }).toList();
 
-                return _buildAnimatedLedger(history);
-              },
+                    return _buildAnimatedLedger(history);
+                  },
+                ),
+              ),
             ),
           ),
         ],
@@ -109,7 +115,10 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
             centerTitle: true,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                Navigator.maybePop(context); // Safe routing
+              },
             ),
             title: Column(
               children: [
@@ -259,6 +268,7 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
 
     return GestureDetector(
       onTap: () {
+        HapticFeedback.selectionClick();
         Navigator.push(context, MaterialPageRoute(builder: (context) => OrderDetailScreen(purchase: item)));
       },
       behavior: HitTestBehavior.opaque,
@@ -340,8 +350,9 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
                               ),
                             ],
                           ),
+                          // FIXED: INR Currency
                           Text(
-                            "\$${item.amountPaid.toStringAsFixed(2)}",
+                            "₹${item.amountPaid.toStringAsFixed(2)}",
                             style: TextStyle(color: luxuryGold, fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: 1),
                           ),
                         ],

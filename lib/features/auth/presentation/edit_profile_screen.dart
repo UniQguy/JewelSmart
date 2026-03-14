@@ -1,11 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // CRITICAL: For Haptic Feedback
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// THE IDENTITY MODIFICATION TERMINAL (EDIT PROFILE)
-/// Engineered as a highly secure, spatial glassmorphic interface connected to Live Firestore.
+/// Engineered to manipulate Core Identity and Logistics Coordinates in the live Firestore matrix.
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -17,6 +18,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final Color luxuryGold = const Color(0xFFD4AF37);
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController(); // NEW: Coordinates
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -37,6 +39,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists) {
           _nameController.text = doc.data()?['name'] ?? "";
+          _addressController.text = doc.data()?['address'] ?? ""; // Pulls dynamic schema field
         }
       }
     } catch (e) {
@@ -48,9 +51,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   // 2. PUSH REAL DATA TO FIREBASE
   Future<void> _saveChanges() async {
+    HapticFeedback.mediumImpact(); // Tactile interaction
     FocusScope.of(context).unfocus(); // Dismiss keyboard
 
-    if (_nameController.text.trim().isEmpty) return;
+    if (_nameController.text.trim().isEmpty) {
+      _showSecureNotification("LEGAL NAME REQUIRED", isError: true);
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -59,10 +66,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (user != null) {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
           'name': _nameController.text.trim(),
+          'address': _addressController.text.trim(), // Dynamically creates/updates field in NoSQL
         });
 
         if (mounted) {
-          _showSecureNotification("IDENTITY PROFILE UPDATED");
+          _showSecureNotification("IDENTITY & LOGISTICS UPDATED");
           await Future.delayed(const Duration(milliseconds: 1000));
           // SAFE POP: Prevents the blank white screen error
           if (Navigator.canPop(context)) {
@@ -83,18 +91,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         behavior: SnackBarBehavior.floating,
-        content: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: isError ? Colors.redAccent.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05),
-                border: Border.all(color: isError ? Colors.redAccent.withValues(alpha: 0.5) : luxuryGold.withValues(alpha: 0.5), width: 0.5),
-              ),
-              child: Text(
-                message,
-                style: TextStyle(color: isError ? Colors.redAccent : Colors.white, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold),
+        content: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600), // Web Scaler
+            child: ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isError ? Colors.redAccent.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05),
+                    border: Border.all(color: isError ? Colors.redAccent.withValues(alpha: 0.5) : luxuryGold.withValues(alpha: 0.5), width: 0.5),
+                  ),
+                  child: Text(
+                    message,
+                    style: TextStyle(color: isError ? Colors.redAccent : Colors.white, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
             ),
           ),
@@ -107,6 +120,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -120,26 +134,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           // 1. Cinematic 3D Background
           _buildAmbientBackground(),
 
-          // 2. Main Interface
+          // 2. Main Interface (Web Scaled)
           SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                _buildHeader(context),
-                const SizedBox(height: 40),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800), // Protects UI on massive screens
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 20),
+                    _buildHeader(context),
+                    const SizedBox(height: 40),
 
-                // Frosted Glass Terminal
-                Expanded(
-                  child: _isLoading
-                      ? Center(child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5))
-                      : SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
-                    child: _buildModificationTerminal(),
-                  ),
+                    // Frosted Glass Terminal
+                    Expanded(
+                      child: _isLoading
+                          ? Center(child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5))
+                          : SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 25),
+                        child: _buildModificationTerminal(),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
 
@@ -181,8 +200,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
-                // SAFE ROUTING: Prevents white screen crashes
-                onPressed: () => Navigator.maybePop(context),
+                // SAFE ROUTING & HAPTICS
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.maybePop(context);
+                },
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.white.withValues(alpha: 0.05),
                   padding: const EdgeInsets.all(16),
@@ -223,8 +245,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             children: [
               _buildEditorialField("FULL LEGAL NAME", Icons.person_outline_rounded, _nameController),
               const SizedBox(height: 35),
+
+              // NEW: Address Field with multiline support
+              _buildEditorialField("DELIVERY COORDINATES", Icons.location_on_outlined, _addressController, maxLines: 3),
+              const SizedBox(height: 35),
+
               // Email is locked to prevent Auth desync crashes
               _buildEditorialField("MEMBER IDENTIFICATION (LOCKED)", Icons.lock_outline_rounded, _emailController, isReadOnly: true),
+              const SizedBox(height: 120), // Bottom padding for the floating action bar
             ],
           ),
         ),
@@ -232,7 +260,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     ).animate().fadeIn(duration: 800.ms, delay: 200.ms).slideY(begin: 0.1, end: 0);
   }
 
-  Widget _buildEditorialField(String label, IconData icon, TextEditingController controller, {bool isReadOnly = false}) {
+  // UPGRADED: Added maxLines support for long addresses
+  Widget _buildEditorialField(String label, IconData icon, TextEditingController controller, {bool isReadOnly = false, int maxLines = 1}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -243,11 +272,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         TextField(
           controller: controller,
           readOnly: isReadOnly,
+          maxLines: maxLines,
+          minLines: 1,
           style: TextStyle(color: isReadOnly ? Colors.white38 : Colors.white, fontSize: 16, letterSpacing: 2, fontWeight: FontWeight.w300),
           cursorColor: luxuryGold,
           decoration: InputDecoration(
             prefixIcon: Padding(
-              padding: const EdgeInsets.only(right: 15),
+              padding: EdgeInsets.only(right: 15, bottom: maxLines > 1 ? 16 : 0), // Adjust alignment for multiline
               child: Icon(icon, color: isReadOnly ? Colors.white24 : luxuryGold.withValues(alpha: 0.6), size: 18),
             ),
             prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
@@ -265,49 +296,54 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       bottom: 0,
       left: 0,
       right: 0,
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(25, 25, 25, 45), // Extra padding for iOS home bar
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.6),
-              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
-            ),
-            child: GestureDetector(
-              onTap: _saveChanges,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800), // Web Scaler
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
-                width: double.infinity,
-                height: 65,
+                padding: const EdgeInsets.fromLTRB(25, 25, 25, 45), // Extra padding for iOS home bar
                 decoration: BoxDecoration(
-                  color: luxuryGold.withValues(alpha: 0.9),
-                  border: Border.all(color: luxuryGold, width: 1),
-                  boxShadow: [
-                    BoxShadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 30, offset: const Offset(0, 10))
-                  ],
+                  color: Colors.black.withValues(alpha: 0.6),
+                  border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
                 ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Text(
-                        "SECURE IDENTITY UPDATES",
-                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 9)
+                child: GestureDetector(
+                  onTap: _saveChanges,
+                  child: Container(
+                    width: double.infinity,
+                    height: 65,
+                    decoration: BoxDecoration(
+                      color: luxuryGold.withValues(alpha: 0.9),
+                      border: Border.all(color: luxuryGold, width: 1),
+                      boxShadow: [
+                        BoxShadow(color: luxuryGold.withValues(alpha: 0.2), blurRadius: 30, offset: const Offset(0, 10))
+                      ],
                     ),
-                    // Sweeping light effect
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.4), Colors.white.withValues(alpha: 0.0)],
-                            stops: const [0.0, 0.5, 1.0],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const Text(
+                            "SECURE IDENTITY UPDATES",
+                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 5, fontSize: 9)
                         ),
-                      ).animate(onPlay: (c) => c.repeat(reverse: false))
-                          .slideX(begin: -2.0, end: 2.0, duration: 3.seconds, curve: Curves.easeInOutSine),
+                        // Sweeping light effect
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.white.withValues(alpha: 0.0), Colors.white.withValues(alpha: 0.4), Colors.white.withValues(alpha: 0.0)],
+                                stops: const [0.0, 0.5, 1.0],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                            ),
+                          ).animate(onPlay: (c) => c.repeat(reverse: false))
+                              .slideX(begin: -2.0, end: 2.0, duration: 3.seconds, curve: Curves.easeInOutSine),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

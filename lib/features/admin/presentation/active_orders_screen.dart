@@ -2,19 +2,19 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-/// THE REPAIR REGISTRY (STAFF INTERFACE)
-/// Engineered as a secure, glassmorphic ledger connected to Live Firestore.
-class RepairManagementScreen extends StatefulWidget {
-  const RepairManagementScreen({super.key});
+/// THE VAULT LOGISTICS TERMINAL (ACTIVE ORDERS)
+/// Engineered to monitor and mutate the fulfillment state of high-value acquisitions.
+class ActiveOrdersScreen extends StatefulWidget {
+  const ActiveOrdersScreen({super.key});
 
   @override
-  State<RepairManagementScreen> createState() => _RepairManagementScreenState();
+  State<ActiveOrdersScreen> createState() => _ActiveOrdersScreenState();
 }
 
-class _RepairManagementScreenState extends State<RepairManagementScreen> {
+class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   final Color luxuryGold = const Color(0xFFD4AF37);
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -25,9 +25,9 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
     super.dispose();
   }
 
-  // --- THE ARTISAN MUTATION ATELIER (BOTTOM SHEET) ---
-  void _showEditStatusSheet(BuildContext context, String repairId, String currentStatus, String artifactName) {
-    String tempStatus = currentStatus.isNotEmpty ? currentStatus.toUpperCase() : 'PENDING';
+  // GLASSMORPHIC LOGISTICS MUTATION ATELIER
+  void _showEditStatusSheet(BuildContext context, String orderId, String currentStatus, String artifactName) {
+    String tempStatus = currentStatus.isNotEmpty ? currentStatus.toUpperCase() : 'PROCESSING';
 
     showModalBottomSheet(
       context: context,
@@ -58,13 +58,13 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
                         children: [
                           Center(child: Container(width: 40, height: 2, color: Colors.white24)),
                           const SizedBox(height: 30),
-                          Text("REPAIR PROTOCOL", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 8, fontWeight: FontWeight.w900)),
+                          Text("LOGISTICS PROTOCOL", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 8, fontWeight: FontWeight.w900)),
                           const SizedBox(height: 10),
                           Text(artifactName.toUpperCase(), style: TextStyle(color: luxuryGold, fontSize: 16, letterSpacing: 4, fontWeight: FontWeight.w100)),
                           const SizedBox(height: 40),
 
-                          _buildSheetLabel("CURRENT RESTORATION STATE"),
-                          _buildSheetOptions(['PENDING', 'IN PROGRESS', 'COMPLETED'], tempStatus, (val) => setSheetState(() => tempStatus = val)),
+                          _buildSheetLabel("CURRENT FULFILLMENT STATE"),
+                          _buildSheetOptions(['PROCESSING', 'IN TRANSIT', 'SECURED'], tempStatus, (val) => setSheetState(() => tempStatus = val)),
 
                           const Spacer(),
 
@@ -80,7 +80,7 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
                               onPressed: () async {
                                 HapticFeedback.mediumImpact();
                                 Navigator.pop(context);
-                                await _updateRepairStatus(repairId, tempStatus);
+                                await _updateOrderStatus(orderId, tempStatus);
                               },
                               child: const Text("ENFORCE LOGISTICS UPDATE", style: TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 4, fontWeight: FontWeight.bold)),
                             ),
@@ -115,7 +115,6 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
         itemCount: options.length,
         itemBuilder: (context, index) {
           bool isSelected = current == options[index];
-          Color statusColor = options[index] == 'COMPLETED' ? Colors.greenAccent : (options[index] == 'IN PROGRESS' ? luxuryGold : Colors.orangeAccent);
 
           return GestureDetector(
             onTap: () {
@@ -129,9 +128,9 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 25),
               decoration: BoxDecoration(
-                color: isSelected ? statusColor : Colors.white.withValues(alpha: 0.02),
-                border: Border.all(color: isSelected ? statusColor : Colors.white.withValues(alpha: 0.08), width: 0.5),
-                boxShadow: isSelected ? [BoxShadow(color: statusColor.withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 1)] : [],
+                color: isSelected ? luxuryGold : Colors.white.withValues(alpha: 0.02),
+                border: Border.all(color: isSelected ? luxuryGold : Colors.white.withValues(alpha: 0.08), width: 0.5),
+                boxShadow: isSelected ? [BoxShadow(color: luxuryGold.withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 1)] : [],
               ),
               child: Center(
                 child: Text(
@@ -146,12 +145,12 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
     );
   }
 
-  Future<void> _updateRepairStatus(String repairId, String status) async {
+  Future<void> _updateOrderStatus(String orderId, String status) async {
     try {
-      await FirebaseFirestore.instance.collection('repairs').doc(repairId).update({
+      await FirebaseFirestore.instance.collection('purchases').doc(orderId).update({
         'status': status,
       });
-      if (mounted) _showNotification("RESTORATION STATE UPDATED", isError: false);
+      if (mounted) _showNotification("LOGISTICS STATE UPDATED", isError: false);
     } catch (e) {
       if (mounted) _showNotification("SYNC FAILED", isError: true);
     }
@@ -193,17 +192,17 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
       appBar: _buildLiquidAppBar(context),
       body: Stack(
         children: [
-          _buildAmbientBackground(),
+          _buildAmbientGlow(),
           SafeArea(
             bottom: false,
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000), // Web Scaler
+                constraints: const BoxConstraints(maxWidth: 1000), // Wide Web Scaler
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildLiquidSearchBar(),
-                    Expanded(child: _buildRepairMatrixStream()),
+                    Expanded(child: _buildOrderMatrixStream()),
                   ],
                 ),
               ),
@@ -231,22 +230,23 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
                 Navigator.maybePop(context);
               },
             ),
-            title: Text('REPAIR REGISTRY', style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 10)),
+            title: Text('VAULT LOGISTICS', style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 10)),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAmbientBackground() {
-    return Positioned.fill(
+  Widget _buildAmbientGlow() {
+    return Positioned(
+      top: -50,
+      left: -100,
       child: Container(
+        width: 400, height: 400,
         decoration: BoxDecoration(
-          gradient: RadialGradient(
-            center: const Alignment(0, -0.6),
-            radius: 1.5,
-            colors: [luxuryGold.withValues(alpha: 0.08), Colors.black],
-          ),
+          shape: BoxShape.circle,
+          color: luxuryGold.withValues(alpha: 0.03),
+          boxShadow: [BoxShadow(color: luxuryGold.withValues(alpha: 0.05), blurRadius: 120, spreadRadius: 40)],
         ),
       ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 8.seconds),
     );
@@ -271,7 +271,7 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
               style: const TextStyle(color: Colors.white, fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w300),
               cursorColor: luxuryGold,
               decoration: InputDecoration(
-                hintText: "SEARCH CLIENTS OR ARTIFACTS...",
+                hintText: "SEARCH HASH IDs OR ARTIFACTS...",
                 hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 9, letterSpacing: 5, fontWeight: FontWeight.bold),
                 prefixIcon: Icon(Icons.search_rounded, color: luxuryGold.withValues(alpha: 0.6), size: 18),
                 border: InputBorder.none,
@@ -284,31 +284,32 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
     ).animate().slideY(begin: -0.2, end: 0, duration: 600.ms, curve: Curves.easeOutQuart);
   }
 
-  Widget _buildRepairMatrixStream() {
+  Widget _buildOrderMatrixStream() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('repairs').snapshots(),
+      // Sorting by most recent acquisitions first
+      stream: FirebaseFirestore.instance.collection('purchases').orderBy('purchaseDate', descending: true).snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5));
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text("NO PENDING REPAIRS", style: TextStyle(color: Colors.white38, letterSpacing: 6, fontSize: 8)));
+          return const Center(child: Text("NO ACTIVE ACQUISITIONS", style: TextStyle(color: Colors.white38, letterSpacing: 6, fontSize: 8)));
         }
 
-        final repairs = snapshot.data!.docs.where((doc) {
+        final orders = snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          final client = (data['customerName'] ?? '').toString().toLowerCase();
-          final item = (data['itemDescription'] ?? '').toString().toLowerCase();
-          return client.contains(_searchQuery) || item.contains(_searchQuery);
+          final artifactName = (data['productName'] ?? '').toString().toLowerCase();
+          final hashId = doc.id.toLowerCase();
+          return artifactName.contains(_searchQuery) || hashId.contains(_searchQuery);
         }).toList();
 
         return AnimationLimiter(
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(25, 0, 25, 100),
             physics: const BouncingScrollPhysics(),
-            itemCount: repairs.length,
+            itemCount: orders.length,
             itemBuilder: (context, index) {
-              final doc = repairs[index];
+              final doc = orders[index];
               final data = doc.data() as Map<String, dynamic>;
 
               return AnimationConfiguration.staggeredList(
@@ -317,7 +318,7 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
                 child: SlideAnimation(
                   verticalOffset: 50.0,
                   child: FadeInAnimation(
-                    child: _buildRepairCard(doc.id, data),
+                    child: _buildOrderTile(doc.id, data),
                   ),
                 ),
               );
@@ -328,25 +329,19 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
     );
   }
 
-  Widget _buildRepairCard(String docId, Map<String, dynamic> data) {
-    final customerName = data['customerName'] ?? 'UNKNOWN CLIENT';
-    final itemDescription = data['itemDescription'] ?? 'UNKNOWN ARTIFACT';
-    final issue = data['issue'] ?? 'Pending Analysis';
-    final status = data['status'] ?? 'PENDING';
-    final estimatedCost = (data['estimatedCost'] ?? 0.0) as num;
+  Widget _buildOrderTile(String orderId, Map<String, dynamic> data) {
+    final artifactName = data['productName'] ?? 'UNKNOWN ARTIFACT';
+    final amountPaid = (data['amountPaid'] ?? 0.0) as num;
+    final status = (data['status'] ?? 'PROCESSING').toString().toUpperCase();
 
-    // Dynamic styling based on status
-    Color statusColor;
-    switch (status.toString().toUpperCase()) {
-      case 'COMPLETED':
-        statusColor = Colors.greenAccent;
-        break;
-      case 'IN PROGRESS':
-        statusColor = luxuryGold;
-        break;
-      default:
-        statusColor = Colors.orangeAccent;
-    }
+    // Formatting the date
+    final timestamp = data['purchaseDate'] as Timestamp?;
+    final dateString = timestamp != null ? timestamp.toDate().toString().substring(0, 10) : 'N/A';
+
+    // Status aesthetics
+    final bool isSecured = status == 'SECURED' || status == 'DELIVERED';
+    final bool isTransit = status == 'IN TRANSIT';
+    final Color statusColor = isSecured ? luxuryGold : (isTransit ? Colors.blueAccent : Colors.white54);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -366,7 +361,7 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => _showEditStatusSheet(context, docId, status, itemDescription),
+              onTap: () => _showEditStatusSheet(context, orderId, status, artifactName),
               highlightColor: luxuryGold.withValues(alpha: 0.1),
               splashColor: luxuryGold.withValues(alpha: 0.2),
               child: Padding(
@@ -374,47 +369,51 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Header Row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("ORDER HASH: ${docId.substring(0, 6).toUpperCase()}", style: const TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 3, fontWeight: FontWeight.bold)),
-                        _statusBadge(status, statusColor),
+                        Row(
+                          children: [
+                            Container(
+                              width: 6, height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: statusColor,
+                                boxShadow: [BoxShadow(color: statusColor.withValues(alpha: 0.5), blurRadius: 5)],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(status, style: TextStyle(color: statusColor, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 4)),
+                          ],
+                        ),
+                        Text(dateString, style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 8, letterSpacing: 2)),
                       ],
                     ),
+
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       child: Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
                     ),
-                    Text(itemDescription.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.w300)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.build_circle_outlined, color: luxuryGold.withValues(alpha: 0.5), size: 14),
-                        const SizedBox(width: 8),
-                        Text(issue.toUpperCase(), style: const TextStyle(color: Colors.white54, fontSize: 9, letterSpacing: 2)),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
+
+                    // Artifact Details
+                    Text(artifactName, style: const TextStyle(color: Colors.white, fontSize: 14, letterSpacing: 3, fontWeight: FontWeight.w200)),
+                    const SizedBox(height: 15),
+
+                    // Footer Row: Hash & Currency (INR format applied)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text("CLIENT", style: TextStyle(color: Colors.white24, fontSize: 7, letterSpacing: 4, fontWeight: FontWeight.bold)),
+                            Text("HASH ID", style: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 6, letterSpacing: 2, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 4),
-                            Text(customerName.toUpperCase(), style: const TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 2)),
+                            Text(orderId.toUpperCase(), style: const TextStyle(color: Colors.white60, fontSize: 9, letterSpacing: 1, fontFamily: 'monospace')),
                           ],
                         ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text("EST. COST", style: TextStyle(color: Colors.white24, fontSize: 7, letterSpacing: 4, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 4),
-                            // FIXED: Added Rupee symbol
-                            Text("₹${estimatedCost.toStringAsFixed(2)}", style: TextStyle(color: luxuryGold, fontSize: 12, letterSpacing: 1, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
+                        Text("₹${amountPaid.toStringAsFixed(2)}", style: TextStyle(color: luxuryGold, fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: 1)),
                       ],
                     ),
                   ],
@@ -424,17 +423,6 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _statusBadge(String status, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        border: Border.all(color: color.withValues(alpha: 0.5), width: 0.5),
-      ),
-      child: Text(status.toUpperCase(), style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 2)),
     );
   }
 }

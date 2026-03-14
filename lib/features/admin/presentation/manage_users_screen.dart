@@ -2,19 +2,19 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-/// THE REPAIR REGISTRY (STAFF INTERFACE)
-/// Engineered as a secure, glassmorphic ledger connected to Live Firestore.
-class RepairManagementScreen extends StatefulWidget {
-  const RepairManagementScreen({super.key});
+/// THE IDENTITY MATRIX (USER MANAGEMENT)
+/// Engineered as a high-clearance terminal to manipulate user roles and vault access.
+class ManageUsersScreen extends StatefulWidget {
+  const ManageUsersScreen({super.key});
 
   @override
-  State<RepairManagementScreen> createState() => _RepairManagementScreenState();
+  State<ManageUsersScreen> createState() => _ManageUsersScreenState();
 }
 
-class _RepairManagementScreenState extends State<RepairManagementScreen> {
+class _ManageUsersScreenState extends State<ManageUsersScreen> {
   final Color luxuryGold = const Color(0xFFD4AF37);
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -25,9 +25,10 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
     super.dispose();
   }
 
-  // --- THE ARTISAN MUTATION ATELIER (BOTTOM SHEET) ---
-  void _showEditStatusSheet(BuildContext context, String repairId, String currentStatus, String artifactName) {
-    String tempStatus = currentStatus.isNotEmpty ? currentStatus.toUpperCase() : 'PENDING';
+  // GLASSMORPHIC ROLE MODIFICATION ATELIER
+  void _showEditRoleSheet(BuildContext context, String userId, String currentRole, String currentStatus, String userName) {
+    String tempRole = currentRole.isNotEmpty ? currentRole : 'Customer';
+    String tempStatus = currentStatus.isNotEmpty ? currentStatus : 'Active';
 
     showModalBottomSheet(
       context: context,
@@ -43,7 +44,7 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
                     child: Container(
-                      height: MediaQuery.of(context).size.height * 0.55,
+                      height: MediaQuery.of(context).size.height * 0.6,
                       padding: const EdgeInsets.fromLTRB(25, 30, 25, 25),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.85),
@@ -58,13 +59,15 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
                         children: [
                           Center(child: Container(width: 40, height: 2, color: Colors.white24)),
                           const SizedBox(height: 30),
-                          Text("REPAIR PROTOCOL", style: TextStyle(color: Colors.white38, fontSize: 8, letterSpacing: 8, fontWeight: FontWeight.w900)),
-                          const SizedBox(height: 10),
-                          Text(artifactName.toUpperCase(), style: TextStyle(color: luxuryGold, fontSize: 16, letterSpacing: 4, fontWeight: FontWeight.w100)),
+                          Text("MODIFY CLEARANCE: ${userName.toUpperCase()}", style: TextStyle(color: luxuryGold, fontSize: 12, letterSpacing: 6, fontWeight: FontWeight.w900)),
                           const SizedBox(height: 40),
 
-                          _buildSheetLabel("CURRENT RESTORATION STATE"),
-                          _buildSheetOptions(['PENDING', 'IN PROGRESS', 'COMPLETED'], tempStatus, (val) => setSheetState(() => tempStatus = val)),
+                          _buildSheetLabel("ASSIGN PROTOCOL ROLE"),
+                          _buildSheetOptions(['Customer', 'Staff', 'Admin'], tempRole, (val) => setSheetState(() => tempRole = val)),
+                          const SizedBox(height: 40),
+
+                          _buildSheetLabel("VAULT ACCESS STATUS"),
+                          _buildSheetOptions(['Active', 'Inactive'], tempStatus, (val) => setSheetState(() => tempStatus = val), isStatus: true),
 
                           const Spacer(),
 
@@ -80,9 +83,9 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
                               onPressed: () async {
                                 HapticFeedback.mediumImpact();
                                 Navigator.pop(context);
-                                await _updateRepairStatus(repairId, tempStatus);
+                                await _updateUserClearance(userId, tempRole, tempStatus);
                               },
-                              child: const Text("ENFORCE LOGISTICS UPDATE", style: TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 4, fontWeight: FontWeight.bold)),
+                              child: const Text("ENFORCE CLEARANCE UPDATE", style: TextStyle(color: Colors.white, fontSize: 10, letterSpacing: 4, fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -106,7 +109,7 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
     );
   }
 
-  Widget _buildSheetOptions(List<String> options, String current, Function(String) onSelect) {
+  Widget _buildSheetOptions(List<String> options, String current, Function(String) onSelect, {bool isStatus = false}) {
     return SizedBox(
       height: 45,
       child: ListView.builder(
@@ -115,7 +118,7 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
         itemCount: options.length,
         itemBuilder: (context, index) {
           bool isSelected = current == options[index];
-          Color statusColor = options[index] == 'COMPLETED' ? Colors.greenAccent : (options[index] == 'IN PROGRESS' ? luxuryGold : Colors.orangeAccent);
+          Color activeColor = isStatus && options[index] == 'Inactive' ? Colors.redAccent : luxuryGold;
 
           return GestureDetector(
             onTap: () {
@@ -129,13 +132,13 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 25),
               decoration: BoxDecoration(
-                color: isSelected ? statusColor : Colors.white.withValues(alpha: 0.02),
-                border: Border.all(color: isSelected ? statusColor : Colors.white.withValues(alpha: 0.08), width: 0.5),
-                boxShadow: isSelected ? [BoxShadow(color: statusColor.withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 1)] : [],
+                color: isSelected ? activeColor : Colors.white.withValues(alpha: 0.02),
+                border: Border.all(color: isSelected ? activeColor : Colors.white.withValues(alpha: 0.08), width: 0.5),
+                boxShadow: isSelected ? [BoxShadow(color: activeColor.withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 1)] : [],
               ),
               child: Center(
                 child: Text(
-                  options[index],
+                  options[index].toUpperCase(),
                   style: TextStyle(color: isSelected ? Colors.black : Colors.white60, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 4),
                 ),
               ),
@@ -146,14 +149,15 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
     );
   }
 
-  Future<void> _updateRepairStatus(String repairId, String status) async {
+  Future<void> _updateUserClearance(String userId, String role, String status) async {
     try {
-      await FirebaseFirestore.instance.collection('repairs').doc(repairId).update({
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'role': role,
         'status': status,
       });
-      if (mounted) _showNotification("RESTORATION STATE UPDATED", isError: false);
+      if (mounted) _showNotification("CLEARANCE OVERRIDE SUCCESSFUL", isError: false);
     } catch (e) {
-      if (mounted) _showNotification("SYNC FAILED", isError: true);
+      if (mounted) _showNotification("OVERRIDE FAILED", isError: true);
     }
   }
 
@@ -193,17 +197,17 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
       appBar: _buildLiquidAppBar(context),
       body: Stack(
         children: [
-          _buildAmbientBackground(),
+          _buildAmbientGlow(),
           SafeArea(
             bottom: false,
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000), // Web Scaler
+                constraints: const BoxConstraints(maxWidth: 1000), // Wide Web Scaler
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildLiquidSearchBar(),
-                    Expanded(child: _buildRepairMatrixStream()),
+                    Expanded(child: _buildUserMatrixStream()),
                   ],
                 ),
               ),
@@ -231,22 +235,23 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
                 Navigator.maybePop(context);
               },
             ),
-            title: Text('REPAIR REGISTRY', style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 10)),
+            title: Text('IDENTITY MATRIX', style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 10)),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAmbientBackground() {
-    return Positioned.fill(
+  Widget _buildAmbientGlow() {
+    return Positioned(
+      bottom: -100,
+      right: -50,
       child: Container(
+        width: 400, height: 400,
         decoration: BoxDecoration(
-          gradient: RadialGradient(
-            center: const Alignment(0, -0.6),
-            radius: 1.5,
-            colors: [luxuryGold.withValues(alpha: 0.08), Colors.black],
-          ),
+          shape: BoxShape.circle,
+          color: luxuryGold.withValues(alpha: 0.03),
+          boxShadow: [BoxShadow(color: luxuryGold.withValues(alpha: 0.05), blurRadius: 120, spreadRadius: 40)],
         ),
       ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 8.seconds),
     );
@@ -271,7 +276,7 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
               style: const TextStyle(color: Colors.white, fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w300),
               cursorColor: luxuryGold,
               decoration: InputDecoration(
-                hintText: "SEARCH CLIENTS OR ARTIFACTS...",
+                hintText: "SEARCH IDENTITIES...",
                 hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 9, letterSpacing: 5, fontWeight: FontWeight.bold),
                 prefixIcon: Icon(Icons.search_rounded, color: luxuryGold.withValues(alpha: 0.6), size: 18),
                 border: InputBorder.none,
@@ -284,31 +289,31 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
     ).animate().slideY(begin: -0.2, end: 0, duration: 600.ms, curve: Curves.easeOutQuart);
   }
 
-  Widget _buildRepairMatrixStream() {
+  Widget _buildUserMatrixStream() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('repairs').snapshots(),
+      stream: FirebaseFirestore.instance.collection('users').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5));
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text("NO PENDING REPAIRS", style: TextStyle(color: Colors.white38, letterSpacing: 6, fontSize: 8)));
+          return const Center(child: Text("NO IDENTITIES FOUND", style: TextStyle(color: Colors.white38, letterSpacing: 6, fontSize: 8)));
         }
 
-        final repairs = snapshot.data!.docs.where((doc) {
+        final users = snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          final client = (data['customerName'] ?? '').toString().toLowerCase();
-          final item = (data['itemDescription'] ?? '').toString().toLowerCase();
-          return client.contains(_searchQuery) || item.contains(_searchQuery);
+          final name = (data['name'] ?? '').toString().toLowerCase();
+          final email = (data['email'] ?? '').toString().toLowerCase();
+          return name.contains(_searchQuery) || email.contains(_searchQuery);
         }).toList();
 
         return AnimationLimiter(
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(25, 0, 25, 100),
             physics: const BouncingScrollPhysics(),
-            itemCount: repairs.length,
+            itemCount: users.length,
             itemBuilder: (context, index) {
-              final doc = repairs[index];
+              final doc = users[index];
               final data = doc.data() as Map<String, dynamic>;
 
               return AnimationConfiguration.staggeredList(
@@ -317,7 +322,7 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
                 child: SlideAnimation(
                   verticalOffset: 50.0,
                   child: FadeInAnimation(
-                    child: _buildRepairCard(doc.id, data),
+                    child: _buildUserTile(doc.id, data),
                   ),
                 ),
               );
@@ -328,32 +333,19 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
     );
   }
 
-  Widget _buildRepairCard(String docId, Map<String, dynamic> data) {
-    final customerName = data['customerName'] ?? 'UNKNOWN CLIENT';
-    final itemDescription = data['itemDescription'] ?? 'UNKNOWN ARTIFACT';
-    final issue = data['issue'] ?? 'Pending Analysis';
-    final status = data['status'] ?? 'PENDING';
-    final estimatedCost = (data['estimatedCost'] ?? 0.0) as num;
-
-    // Dynamic styling based on status
-    Color statusColor;
-    switch (status.toString().toUpperCase()) {
-      case 'COMPLETED':
-        statusColor = Colors.greenAccent;
-        break;
-      case 'IN PROGRESS':
-        statusColor = luxuryGold;
-        break;
-      default:
-        statusColor = Colors.orangeAccent;
-    }
+  Widget _buildUserTile(String userId, Map<String, dynamic> data) {
+    final name = data['name'] ?? 'UNKNOWN';
+    final email = data['email'] ?? 'NO CONTACT';
+    final role = data['role'] ?? 'Customer';
+    final status = data['status'] ?? 'Active';
+    final isInactive = status == 'Inactive';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.02),
         border: Border(
-          left: BorderSide(color: statusColor.withValues(alpha: 0.8), width: 2),
+          left: BorderSide(color: isInactive ? Colors.redAccent : luxuryGold.withValues(alpha: 0.8), width: 2),
           top: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
           right: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
           bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
@@ -366,54 +358,41 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => _showEditStatusSheet(context, docId, status, itemDescription),
+              onTap: () => _showEditRoleSheet(context, userId, role, status, name),
               highlightColor: luxuryGold.withValues(alpha: 0.1),
               splashColor: luxuryGold.withValues(alpha: 0.2),
               child: Padding(
                 padding: const EdgeInsets.all(25),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text("ORDER HASH: ${docId.substring(0, 6).toUpperCase()}", style: const TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 3, fontWeight: FontWeight.bold)),
-                        _statusBadge(status, statusColor),
-                      ],
+                    Icon(
+                      role == 'Admin' ? Icons.admin_panel_settings : (role == 'Staff' ? Icons.badge : Icons.person_outline),
+                      color: isInactive ? Colors.redAccent.withValues(alpha: 0.5) : luxuryGold.withValues(alpha: 0.8),
+                      size: 24,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      child: Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
+                    const SizedBox(width: 25),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name.toString().toUpperCase(), style: TextStyle(color: isInactive ? Colors.white38 : Colors.white, fontSize: 12, letterSpacing: 4, fontWeight: FontWeight.w900)),
+                          const SizedBox(height: 6),
+                          Text(email.toString().toLowerCase(), style: const TextStyle(color: Colors.white38, fontSize: 9, letterSpacing: 2)),
+                        ],
+                      ),
                     ),
-                    Text(itemDescription.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.w300)),
-                    const SizedBox(height: 8),
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Icon(Icons.build_circle_outlined, color: luxuryGold.withValues(alpha: 0.5), size: 14),
-                        const SizedBox(width: 8),
-                        Text(issue.toUpperCase(), style: const TextStyle(color: Colors.white54, fontSize: 9, letterSpacing: 2)),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("CLIENT", style: TextStyle(color: Colors.white24, fontSize: 7, letterSpacing: 4, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 4),
-                            Text(customerName.toUpperCase(), style: const TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 2)),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text("EST. COST", style: TextStyle(color: Colors.white24, fontSize: 7, letterSpacing: 4, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 4),
-                            // FIXED: Added Rupee symbol
-                            Text("₹${estimatedCost.toStringAsFixed(2)}", style: TextStyle(color: luxuryGold, fontSize: 12, letterSpacing: 1, fontWeight: FontWeight.bold)),
-                          ],
+                        Text(role.toString().toUpperCase(), style: TextStyle(color: luxuryGold, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isInactive ? Colors.redAccent.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05),
+                            border: Border.all(color: isInactive ? Colors.redAccent.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1), width: 0.5),
+                          ),
+                          child: Text(status.toString().toUpperCase(), style: TextStyle(color: isInactive ? Colors.redAccent : Colors.white70, fontSize: 6, letterSpacing: 2, fontWeight: FontWeight.w900)),
                         ),
                       ],
                     ),
@@ -424,17 +403,6 @@ class _RepairManagementScreenState extends State<RepairManagementScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _statusBadge(String status, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        border: Border.all(color: color.withValues(alpha: 0.5), width: 0.5),
-      ),
-      child: Text(status.toUpperCase(), style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 2)),
     );
   }
 }

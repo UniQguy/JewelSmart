@@ -8,7 +8,7 @@ import '../../../core/router/app_routes.dart';
 
 /// THE PRIVATE VAULT (CART)
 /// Engineered to float seamlessly within the MainWrapper's 3D spatial shell.
-/// Fully synchronized with Live Firestore data and Cloudinary network assets.
+/// Fully synchronized with Live Firestore data, Cloudinary network assets, and INR Currency.
 class CartPage extends ConsumerWidget {
   const CartPage({super.key});
 
@@ -20,7 +20,6 @@ class CartPage extends ConsumerWidget {
     final totalAmount = ref.watch(cartTotalProvider);
 
     return Scaffold(
-      // CRITICAL: Transparent background lets MainWrapper's 3D depth show through
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       appBar: _buildVaultAppBar(context),
@@ -31,26 +30,31 @@ class CartPage extends ConsumerWidget {
           // 1. Ambient Vault Glow
           _buildAmbientGlow(),
 
-          // 2. Liquid Scroll List
-          AnimationLimiter(
-            child: ListView.builder(
-              // Massive bottom padding so the last item scrolls past the floating checkout & global dock
-              padding: const EdgeInsets.fromLTRB(25, 120, 25, 380),
-              physics: const BouncingScrollPhysics(),
-              itemCount: cartItems.length,
-              itemBuilder: (context, index) {
-                final item = cartItems[index];
-                return AnimationConfiguration.staggeredList(
-                  position: index,
-                  duration: const Duration(milliseconds: 800),
-                  child: SlideAnimation(
-                    verticalOffset: 50.0,
-                    child: FadeInAnimation(
-                      child: _buildVaultItem(context, ref, item),
-                    ),
-                  ),
-                );
-              },
+          // 2. Liquid Scroll List (Web Scaled)
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800), // Protects UI on wide monitors
+              child: AnimationLimiter(
+                child: ListView.builder(
+                  // Massive bottom padding so the last item scrolls past the floating checkout & global dock
+                  padding: const EdgeInsets.fromLTRB(25, 120, 25, 380),
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: cartItems.length,
+                  itemBuilder: (context, index) {
+                    final item = cartItems[index];
+                    return AnimationConfiguration.staggeredList(
+                      position: index,
+                      duration: const Duration(milliseconds: 800),
+                      child: SlideAnimation(
+                        verticalOffset: 50.0,
+                        child: FadeInAnimation(
+                          child: _buildVaultItem(context, ref, item),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
           ),
 
@@ -71,7 +75,7 @@ class CartPage extends ConsumerWidget {
             backgroundColor: Colors.black.withValues(alpha: 0.4),
             elevation: 0,
             centerTitle: true,
-            automaticallyImplyLeading: false, // Removed back button as this is a root tab
+            automaticallyImplyLeading: false,
             title: const Text(
                 "THE VAULT",
                 style: TextStyle(color: Colors.white, fontSize: 11, letterSpacing: 10, fontWeight: FontWeight.w900)
@@ -137,7 +141,7 @@ class CartPage extends ConsumerWidget {
                     ),
                   );
                 },
-                errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image_outlined, color: Colors.white10),
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image_outlined, color: Colors.white10),
               ),
             ),
           ),
@@ -152,13 +156,13 @@ class CartPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                    "\$${item.product.totalPayableAmount.toStringAsFixed(2)}",
+                    "₹${item.product.totalPayableAmount.toStringAsFixed(2)}",
                     style: TextStyle(color: luxuryGold, fontSize: 12, letterSpacing: 1, fontWeight: FontWeight.w300)
                 ),
               ],
             ),
           ),
-          // Precision Quantity Controls mapped to the Live String ID
+          // Precision Quantity Controls
           Row(
             children: [
               _quantityAction(Icons.remove, () => ref.read(cartProvider.notifier).decrementQuantity(item.product.id)),
@@ -195,36 +199,44 @@ class CartPage extends ConsumerWidget {
   }
 
   Widget _buildBoutiqueCheckoutPanel(BuildContext context, double total) {
+    final double gstAmount = total * 0.03; // 3% Indian Jewelry GST
+    final double finalAmount = total + gstAmount;
+
     return Positioned(
       bottom: 120, // CRITICAL: Floats above the MainWrapper's Navigation Dock
-      left: 20,
-      right: 20,
-      child: ClipRRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-          child: Container(
-            padding: const EdgeInsets.all(35),
-            decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.5),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 10)
-                ]
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _priceRow("SUBTOTAL", "\$${total.toStringAsFixed(2)}", isSmall: true),
-                const SizedBox(height: 12),
-                _priceRow("ESTIMATED TAX", "\$${(total * 0.03).toStringAsFixed(2)}", isSmall: true),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 25),
-                  child: Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
+      left: 0,
+      right: 0,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600), // Web Scaler
+          child: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+              child: Container(
+                padding: const EdgeInsets.all(35),
+                decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 10)
+                    ]
                 ),
-                _priceRow("TOTAL ACQUISITION", "\$${(total * 1.03).toStringAsFixed(2)}", isSmall: false),
-                const SizedBox(height: 35),
-                _buildSecureAction(context),
-              ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _priceRow("SUBTOTAL", "₹${total.toStringAsFixed(2)}", isSmall: true),
+                    const SizedBox(height: 12),
+                    _priceRow("ESTIMATED GST (3%)", "₹${gstAmount.toStringAsFixed(2)}", isSmall: true),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 25),
+                      child: Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
+                    ),
+                    _priceRow("TOTAL ACQUISITION", "₹${finalAmount.toStringAsFixed(2)}", isSmall: false),
+                    const SizedBox(height: 35),
+                    _buildSecureAction(context),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

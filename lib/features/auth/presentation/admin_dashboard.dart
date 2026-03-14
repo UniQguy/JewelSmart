@@ -7,6 +7,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../../auth/data/auth_service.dart';
+import '../../admin/presentation/manage_users_screen.dart';
+import '../../admin/presentation/active_orders_screen.dart';
+import '../../auth/presentation/settings_screen.dart';
 
 /// THE COMMAND CENTER (ADMIN DASHBOARD)
 /// Engineered as a live, high-clearance executive terminal wired directly to the Firestore mainframe.
@@ -45,7 +48,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
                       _buildSectionLabel("LIVE EXECUTIVE OVERVIEW"),
                       const SizedBox(height: 10),
-                      _buildLiveKPIGrid(), // Now strictly connected to Cloud Data
+                      _buildLiveKPIGrid(), // Now strictly connected to Cloud Data (INR)
 
                       const SizedBox(height: 40),
 
@@ -139,7 +142,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     ).animate().fadeIn(delay: 200.ms);
   }
 
-  /// CRITICAL UPDATE: Rips out the hardcoded stats and calculates real values from Firestore
+  /// CRITICAL UPDATE: Rupee formatting applied
   Widget _buildLiveKPIGrid() {
     return StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('purchases').snapshots(),
@@ -161,14 +164,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
             }
           }
 
-          // Format revenue to look premium (e.g., $1.4K, $2.5M)
-          String formattedRevenue = "\$0.00";
+          // Format revenue to look premium in INR (e.g., ₹1.4K, ₹2.5M)
+          String formattedRevenue = "₹0.00";
           if (totalRevenue >= 1000000) {
-            formattedRevenue = "\$${(totalRevenue / 1000000).toStringAsFixed(1)}M";
+            formattedRevenue = "₹${(totalRevenue / 1000000).toStringAsFixed(1)}M";
           } else if (totalRevenue >= 1000) {
-            formattedRevenue = "\$${(totalRevenue / 1000).toStringAsFixed(1)}K";
+            formattedRevenue = "₹${(totalRevenue / 1000).toStringAsFixed(1)}K";
           } else {
-            formattedRevenue = "\$${totalRevenue.toStringAsFixed(0)}";
+            formattedRevenue = "₹${totalRevenue.toStringAsFixed(0)}";
           }
 
           return AnimationLimiter(
@@ -194,7 +197,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Helper to quickly count documents in a collection for KPIs
   Widget _buildStreamMetricCard(String label, String collectionPath, IconData icon) {
     return StreamBuilder<AggregateQuerySnapshot>(
         stream: FirebaseFirestore.instance.collection(collectionPath).count().get().asStream(),
@@ -295,16 +297,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ).animate().fadeIn(duration: 800.ms, delay: 400.ms),
 
-          // Standard Actions
-          _buildActionTile(context, "MANAGE USERS & ROLES", Icons.admin_panel_settings_outlined, null),
-          _buildActionTile(context, "VIEW ACTIVE ORDERS", Icons.assignment_outlined, null),
-          _buildActionTile(context, "GLOBAL SYSTEM SETTINGS", Icons.settings_applications_outlined, null),
+          // FIXED: Buttons are no longer hardcoded dead links
+          _buildActionTile(context, "MANAGE USERS & ROLES", Icons.admin_panel_settings_outlined, destination: const ManageUsersScreen()),
+          _buildActionTile(context, "VIEW ACTIVE ORDERS", Icons.assignment_outlined, destination: const ActiveOrdersScreen()),
+          _buildActionTile(context, "GLOBAL SYSTEM SETTINGS", Icons.settings_applications_outlined, destination: const SettingsScreen()),
         ],
       ),
     );
   }
 
-  Widget _buildActionTile(BuildContext context, String label, IconData icon, String? routeName) {
+  // UPDATED: Accepts a Widget destination instead of throwing a snackbar
+  Widget _buildActionTile(BuildContext context, String label, IconData icon, {Widget? destination}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
@@ -319,17 +322,79 @@ class _AdminDashboardState extends State<AdminDashboard> {
             leading: Icon(icon, color: Colors.white54, size: 20),
             title: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9, letterSpacing: 4, fontWeight: FontWeight.w600)),
             trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 12),
-            onTap: routeName != null ? () => Navigator.pushNamed(context, routeName) : () {
-              // Placeholder for future modules
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: Colors.black.withValues(alpha: 0.9),
-                  content: Text("MODULE ENCRYPTED: $label", style: const TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 2)),
-                ),
-              );
+            onTap: () {
+              if (destination != null) {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => destination));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: Colors.black.withValues(alpha: 0.9),
+                    content: Text("MODULE ENCRYPTED: $label", style: const TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 2)),
+                  ),
+                );
+              }
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A highly polished buffer screen that prevents the app from crashing before we build the actual databases.
+class SecureModulePlaceholder extends StatelessWidget {
+  final String title;
+  const SecureModulePlaceholder({super.key, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color luxuryGold = const Color(0xFFD4AF37);
+    return Scaffold(
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, -0.2),
+                  radius: 1.5,
+                  colors: [luxuryGold.withValues(alpha: 0.1), Colors.black],
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 50, height: 50,
+                  child: CircularProgressIndicator(color: luxuryGold.withValues(alpha: 0.5), strokeWidth: 1.5),
+                ).animate(onPlay: (c) => c.repeat()).rotate(duration: 2.seconds),
+                const SizedBox(height: 40),
+                Text(
+                  "INITIALIZING MODULE",
+                  style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 8, fontWeight: FontWeight.w900),
+                ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 1.seconds),
+                const SizedBox(height: 10),
+                Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(color: Colors.white38, fontSize: 7, letterSpacing: 6, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

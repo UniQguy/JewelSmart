@@ -10,9 +10,10 @@ import '../../auth/presentation/edit_profile_screen.dart';
 import '../../auth/presentation/acquisition_history_page.dart';
 import '../../wishlist/presentation/wishlist_page.dart';
 import '../../auth/data/auth_service.dart';
+import '../../auth/presentation/settings_screen.dart';
 
 /// THE VIP CLIENT DOSSIER (PROFILE)
-/// Engineered with an interactive 3D Black Card identity and live Firestore integration.
+/// Engineered with an interactive 3D Black Card identity, live address routing, and real-time logistics tracking.
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -46,46 +47,55 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
               String role = "VIP CLIENT";
               String email = FirebaseAuth.instance.currentUser?.email ?? "secure@vault.com";
               String memberSince = "2026";
+              String address = "DELIVERY COORDINATES NOT SECURED"; // Default fallback
 
               if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
                 final data = snapshot.data!.data() as Map<String, dynamic>;
                 name = data['name'] ?? "VIP CLIENT";
                 role = data['role'] ?? "MEMBER";
-                // If you store creation date, you can pull it here.
+                // Pulls address directly from the document
+                if (data['address'] != null && data['address'].toString().trim().isNotEmpty) {
+                  address = data['address'];
+                }
               }
 
               return SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                child: AnimationLimiter(
-                  child: Column(
-                    children: AnimationConfiguration.toStaggeredList(
-                      duration: const Duration(milliseconds: 800),
-                      childAnimationBuilder: (widget) => SlideAnimation(
-                        verticalOffset: 50.0,
-                        child: FadeInAnimation(child: widget),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 800), // Web Scaler
+                    child: AnimationLimiter(
+                      child: Column(
+                        children: AnimationConfiguration.toStaggeredList(
+                          duration: const Duration(milliseconds: 800),
+                          childAnimationBuilder: (widget) => SlideAnimation(
+                            verticalOffset: 50.0,
+                            child: FadeInAnimation(child: widget),
+                          ),
+                          children: [
+                            const SizedBox(height: 120),
+
+                            // 1. THE INTERACTIVE 3D BLACK CARD (Now Includes Address)
+                            _buildInteractiveBlackCard(name, role, email, memberSince, address),
+
+                            const SizedBox(height: 40),
+
+                            // 2. LIVE VAULT LOGISTICS (Now wired to real Firestore Purchases)
+                            _buildSectionHeader("ACTIVE ACQUISITIONS"),
+                            _buildLiveVaultLogistics(),
+
+                            const SizedBox(height: 40),
+
+                            // 3. SECURE PREFERENCES MENU
+                            _buildSectionHeader("SECURITY & PREFERENCES"),
+                            _buildVaultMenu(context),
+
+                            const SizedBox(height: 50),
+                            _buildLogoutAction(),
+                            const SizedBox(height: 150), // Dock buffer
+                          ],
+                        ),
                       ),
-                      children: [
-                        const SizedBox(height: 120),
-
-                        // 1. THE INTERACTIVE 3D BLACK CARD
-                        _buildInteractiveBlackCard(name, role, email, memberSince),
-
-                        const SizedBox(height: 40),
-
-                        // 2. LIVE VAULT LOGISTICS (Replaces fake order tracking)
-                        _buildSectionHeader("ACTIVE ACQUISITIONS"),
-                        _buildVaultLogistics(),
-
-                        const SizedBox(height: 40),
-
-                        // 3. SECURE PREFERENCES MENU
-                        _buildSectionHeader("SECURITY & PREFERENCES"),
-                        _buildVaultMenu(context),
-
-                        const SizedBox(height: 50),
-                        _buildLogoutAction(),
-                        const SizedBox(height: 150), // Dock buffer
-                      ],
                     ),
                   ),
                 ),
@@ -137,18 +147,16 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
   }
 
   // --- THE 3D INTERACTIVE BLACK CARD ---
-  Widget _buildInteractiveBlackCard(String name, String role, String email, String date) {
+  Widget _buildInteractiveBlackCard(String name, String role, String email, String date, String address) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: GestureDetector(
         onPanUpdate: (details) {
           setState(() {
-            // Adjust tilt based on finger swipe
             _cardTilt += details.delta;
           });
         },
         onPanEnd: (_) {
-          // Snap back to flat when released
           setState(() {
             _cardTilt = Offset.zero;
           });
@@ -167,7 +175,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOut,
                 width: double.infinity,
-                height: 220,
+                height: 240, // Slightly taller to accommodate address
                 padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -192,11 +200,11 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // TOP ROW: Chip and Logo
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Simulated NFC / Security Chip
                         Container(
                           width: 40,
                           height: 30,
@@ -212,14 +220,34 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
                         Icon(Icons.diamond_outlined, color: luxuryGold, size: 24),
                       ],
                     ),
+
+                    // MIDDLE ROW: Name, Email & Address
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(name.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w200, letterSpacing: 6)),
                         const SizedBox(height: 5),
                         Text(email.toLowerCase(), style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10, letterSpacing: 2)),
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.location_on_outlined, color: luxuryGold.withValues(alpha: 0.8), size: 12),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                address.toUpperCase(),
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 8, letterSpacing: 2, height: 1.4),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
+
+                    // BOTTOM ROW: Clearance and Date
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -264,27 +292,54 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
     );
   }
 
-  // --- VAULT LOGISTICS (Replaces the dummy progress bar) ---
-  Widget _buildVaultLogistics() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 25),
-      child: Container(
-        padding: const EdgeInsets.all(25),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.02),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _logisticsNode(Icons.inventory_2_outlined, "PROCESSING", "0", isActive: true),
-            _logisticsDivider(),
-            _logisticsNode(Icons.flight_takeoff_rounded, "IN TRANSIT", "0"),
-            _logisticsDivider(),
-            _logisticsNode(Icons.task_alt_rounded, "SECURED", "12", isGold: true),
-          ],
-        ),
-      ),
+  // --- LIVE VAULT LOGISTICS (Connected to Firestore) ---
+  Widget _buildLiveVaultLogistics() {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (userId == null) return const SizedBox();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('purchases')
+          .where('userId', isEqualTo: userId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        int processing = 0;
+        int inTransit = 0;
+        int secured = 0;
+
+        if (snapshot.hasData) {
+          for (var doc in snapshot.data!.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final status = (data['status'] as String?)?.toUpperCase() ?? '';
+
+            if (status == 'PROCESSING') processing++;
+            else if (status == 'IN TRANSIT') inTransit++;
+            else if (status == 'SECURED' || status == 'DELIVERED') secured++;
+          }
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 25),
+          child: Container(
+            padding: const EdgeInsets.all(25),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.02),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _logisticsNode(Icons.inventory_2_outlined, "PROCESSING", "$processing", isActive: processing > 0),
+                _logisticsDivider(),
+                _logisticsNode(Icons.flight_takeoff_rounded, "IN TRANSIT", "$inTransit", isActive: inTransit > 0),
+                _logisticsDivider(),
+                _logisticsNode(Icons.task_alt_rounded, "SECURED", "$secured", isGold: secured > 0),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -296,7 +351,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
           alignment: Alignment.center,
           children: [
             Icon(icon, color: baseColor, size: 24),
-            if (isActive) // Processing shimmer effect
+            if (isActive && !isGold) // Processing/Transit shimmer effect
               Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white24, width: 0.5)),
@@ -330,7 +385,6 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
         ),
         child: Column(
           children: [
-            // FIXED: Now uses MaterialPageRoute directly to bypass route string errors
             _vaultItem(Icons.history_edu_outlined, "ACQUISITION HISTORY", onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const AcquisitionHistoryPage()));
             }),
@@ -339,11 +393,13 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
               Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
             }),
             _divider(),
-            _vaultItem(Icons.diamond_outlined, "CURATED WISHLIST",onTap: () {
+            _vaultItem(Icons.diamond_outlined, "CURATED WISHLIST", onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const WishlistPage()));
             }),
             _divider(),
-            _vaultItem(Icons.security_rounded, "VAULT SETTINGS", onTap: () {}),
+            _vaultItem(Icons.security_rounded, "VAULT SETTINGS", onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
+            }),
           ],
         ),
       ),

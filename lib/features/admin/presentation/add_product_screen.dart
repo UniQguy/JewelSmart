@@ -2,6 +2,7 @@ import 'dart:typed_data'; // CRITICAL: Replaces dart:io for web compatibility
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // CRITICAL: Added for Haptic Feedback
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -12,7 +13,7 @@ import '../../auth/domain/product_model.dart';
 
 /// THE ARTISAN UPLOAD TERMINAL
 /// Engineered to push new 3D collections to Cloudinary and Firestore atomically.
-/// FULLY CROSS-PLATFORM (Web, iOS, Android).
+/// FULLY CROSS-PLATFORM (Web, iOS, Android) AND INDIAN MARKET SCALED (INR/GST).
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
 
@@ -25,14 +26,19 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _makingController = TextEditingController(); // NEW: Making Charges
+  final TextEditingController _weightController = TextEditingController(); // NEW: Weight
   final TextEditingController _descriptionController = TextEditingController();
 
   String _selectedCategory = 'RINGS';
   final List<String> _categories = ['RINGS', 'NECKLACES', 'BRACELETS', 'EARRINGS', 'ESTATE'];
 
+  String _selectedPurity = '22';
+  final List<String> _purities = ['24', '22', '18', '14']; // Corresponds to Karats
+
   bool _isLoading = false;
 
-  // FIXED: Using byte stream instead of a file path for Web compatibility
+  // Using byte stream instead of a file path for Web compatibility
   Uint8List? _selectedImageBytes;
   String? _selectedImageName;
 
@@ -40,6 +46,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
   void dispose() {
     _titleController.dispose();
     _priceController.dispose();
+    _makingController.dispose();
+    _weightController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
@@ -54,7 +62,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     request.fields['upload_preset'] = uploadPreset;
 
-    // FIXED: Uploading raw bytes instead of reading from a local hard drive path
     request.files.add(http.MultipartFile.fromBytes(
         'file',
         imageBytes,
@@ -75,6 +82,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   /// MASTER SYNC PROTOCOL
   Future<void> _processUpload() async {
+    HapticFeedback.heavyImpact();
+    FocusScope.of(context).unfocus();
+
     if (_selectedImageBytes == null || _titleController.text.trim().isEmpty || _priceController.text.trim().isEmpty) {
       _showErrorSnackBar("COLLECTION DATA OR ASSET MISSING");
       return;
@@ -90,21 +100,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
         throw Exception("CDN Transmission Failed");
       }
 
-      // 2. Generate Product Blueprint
+      // 2. Generate Product Blueprint with ALL required Dictionary parameters
       final docRef = FirebaseFirestore.instance.collection('products').doc();
-      final newProduct = Product(
-        id: docRef.id,
-        title: _titleController.text.trim(),
-        price: double.tryParse(_priceController.text.trim()) ?? 0.0,
-        description: _descriptionController.text.trim(),
-        category: _selectedCategory,
-        imageUrl: imageUrl,
-        stock: 1,
-        createdAt: DateTime.now(),
-      );
+
+      // Map data directly to ensure Firestore catches the new fields even if the local model is rigid
+      final Map<String, dynamic> productData = {
+        'id': docRef.id,
+        'title': _titleController.text.trim(),
+        'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
+        'makingCharges': double.tryParse(_makingController.text.trim()) ?? 0.0,
+        'weight': double.tryParse(_weightController.text.trim()) ?? 0.0,
+        'purity': double.tryParse(_selectedPurity) ?? 22.0,
+        'description': _descriptionController.text.trim(),
+        'category': _selectedCategory,
+        'imageUrl': imageUrl,
+        'stock': 1,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
 
       // 3. Inject to Firestore Vault
-      await docRef.set(newProduct.toMap());
+      await docRef.set(productData);
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -119,6 +134,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   /// DEVICE GALLERY ACCESS (Web Safe)
   Future<void> _pickImage() async {
+    HapticFeedback.selectionClick();
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
@@ -126,7 +142,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
 
     if (pickedFile != null) {
-      // FIXED: Read the file as bytes into memory immediately
       final bytes = await pickedFile.readAsBytes();
       setState(() {
         _selectedImageBytes = bytes;
@@ -145,7 +160,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            Navigator.maybePop(context);
+          },
         ),
       ),
       body: Stack(
@@ -153,20 +171,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
           _buildAmbientGlow(),
 
           SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  _buildHeader(),
-                  const SizedBox(height: 40),
-                  _buildInputTerminal(),
-                  const SizedBox(height: 40),
-                  _buildPrimaryAction(),
-                  const SizedBox(height: 80),
-                ],
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800), // Web Scaler
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      _buildHeader(),
+                      const SizedBox(height: 40),
+                      _buildInputTerminal(),
+                      const SizedBox(height: 40),
+                      _buildPrimaryAction(),
+                      const SizedBox(height: 80),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -243,12 +266,32 @@ class _AddProductScreenState extends State<AddProductScreen> {
             children: [
               _buildImageSelector(),
               const SizedBox(height: 40),
+
               _buildEditorialField("COLLECTION TITLE", Icons.diamond_outlined, _titleController),
               const SizedBox(height: 30),
-              _buildEditorialField("VAULT VALUE (USD)", Icons.attach_money_rounded, _priceController, isNumber: true),
+
+              // NEW LAYOUT: Grouping numeric fields to look like an invoice form
+              Row(
+                children: [
+                  Expanded(child: _buildEditorialField("BASE VALUE (₹)", Icons.currency_rupee_rounded, _priceController, isNumber: true)),
+                  const SizedBox(width: 20),
+                  Expanded(child: _buildEditorialField("MAKING CHG (₹)", Icons.handyman_outlined, _makingController, isNumber: true)),
+                ],
+              ),
               const SizedBox(height: 30),
-              _buildCategoryDropdown(),
+
+              Row(
+                children: [
+                  Expanded(child: _buildEditorialField("WEIGHT (GRAMS)", Icons.monitor_weight_outlined, _weightController, isNumber: true)),
+                  const SizedBox(width: 20),
+                  Expanded(child: _buildDropdown("PURITY (K)", _purities, _selectedPurity, (val) => setState(() => _selectedPurity = val))),
+                ],
+              ),
               const SizedBox(height: 30),
+
+              _buildDropdown("CLASSIFICATION", _categories, _selectedCategory, (val) => setState(() => _selectedCategory = val)),
+              const SizedBox(height: 30),
+
               _buildEditorialField("LORE & DESCRIPTION", Icons.subject_rounded, _descriptionController, maxLines: 3),
             ],
           ),
@@ -266,7 +309,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.5),
           border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
-          // FIXED: Uses MemoryImage to render raw bytes instead of FileImage
           image: _selectedImageBytes != null
               ? DecorationImage(
             image: MemoryImage(_selectedImageBytes!),
@@ -291,12 +333,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  Widget _buildCategoryDropdown() {
+  Widget _buildDropdown(String label, List<String> items, String currentValue, Function(String) onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("CLASSIFICATION",
-            style: TextStyle(color: Colors.white38, fontSize: 7, letterSpacing: 5, fontWeight: FontWeight.w900)),
+        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 7, letterSpacing: 5, fontWeight: FontWeight.w900)),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -305,20 +346,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: _selectedCategory,
+              value: currentValue,
               isExpanded: true,
               dropdownColor: Colors.grey[900],
               icon: Icon(Icons.arrow_drop_down, color: luxuryGold.withValues(alpha: 0.6)),
               style: const TextStyle(color: Colors.white, fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.w300),
-              items: _categories.map((String category) {
+              items: items.map((String item) {
                 return DropdownMenuItem<String>(
-                  value: category,
-                  child: Text(category),
+                  value: item,
+                  child: Text(item),
                 );
               }).toList(),
               onChanged: (String? newValue) {
                 if (newValue != null) {
-                  setState(() => _selectedCategory = newValue);
+                  HapticFeedback.selectionClick();
+                  onChanged(newValue);
                 }
               },
             ),
@@ -337,6 +379,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           controller: controller,
           keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
           maxLines: maxLines,
+          minLines: 1,
           style: const TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 2, fontWeight: FontWeight.w300),
           cursorColor: luxuryGold,
           decoration: InputDecoration(
@@ -397,17 +440,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         behavior: SnackBarBehavior.floating,
-        content: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.redAccent.withValues(alpha: 0.1),
-                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 0.5),
-              ),
-              child: Text(message.toUpperCase(),
-                style: const TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 2, fontWeight: FontWeight.bold),
+        content: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.1),
+                    border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5), width: 0.5),
+                  ),
+                  child: Text(message.toUpperCase(),
+                    style: const TextStyle(color: Colors.white, fontSize: 8, letterSpacing: 2, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
             ),
           ),
