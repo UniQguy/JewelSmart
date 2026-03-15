@@ -5,14 +5,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../providers/product_provider.dart';
 import 'widgets/luxury_product_card.dart';
 
-/// THE DISCOVERY STUDIO (HOME V6: THE MASTERPIECE)
-/// Engineered for jaw-dropping spatial depth, magnetic scroll physics,
-/// and a simulated "auto-playing" cinematic scroll scene.
+/// THE DISCOVERY STUDIO (HOME FINAL: THE APEX EDITORIAL)
+/// Engineered with Flawless Magnetic Typography, Perfect Cloudinary
+/// Video Scaling, and a Minimalist Production-Grade Footer.
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -26,34 +27,63 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
 
   late AnimationController _sparkleController;
   late AnimationController _simulatedVideoController;
+  late AnimationController _breathingHeroController;
+
+  final List<VideoPlayerController> _videoControllers = [];
+
+  // 🔴 CLOUDINARY INTEGRATION POINT 🔴
+  // URLs injected.
+  // Note: Appending 'q_auto,f_auto,w_500' before the file name compresses
+  // the video for mobile so all 3 play instantly without freezing the hardware decoder.
+  final List<String> _videoPaths = [
+    'https://res.cloudinary.com/dtmpvbon0/video/upload/q_auto,f_auto,w_500/v1773574265/example_tpp8ee.mp4',
+    'https://res.cloudinary.com/dtmpvbon0/video/upload/q_auto,f_auto,w_500/v1773574295/example2_l3djjz.mp4',
+    'https://res.cloudinary.com/dtmpvbon0/video/upload/q_auto,f_auto,w_500/v1773574293/example3_hvjjjr.mp4',
+  ];
+
   double _scrollOffset = 0.0;
 
   @override
   void initState() {
     super.initState();
 
-    // Controls the ambient background glow and lattice rotation
-    _sparkleController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
-
-    // Controls the "Auto-Playing Video" pan effect
-    _simulatedVideoController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 15),
-    )..repeat(reverse: true);
+    _sparkleController = AnimationController(vsync: this, duration: const Duration(seconds: 20))..repeat();
+    _simulatedVideoController = AnimationController(vsync: this, duration: const Duration(seconds: 15))..repeat(reverse: true);
+    _breathingHeroController = AnimationController(vsync: this, duration: const Duration(seconds: 25))..repeat(reverse: true);
 
     _scrollController.addListener(() {
       if (mounted) setState(() => _scrollOffset = _scrollController.offset);
     });
+
+    // Parallel Network Loading for Cloudinary URLs
+    for (var path in _videoPaths) {
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(path),
+        // mixWithOthers ensures your muted autoplay videos don't stop the user's background music on iOS/Android
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
+      _videoControllers.add(controller);
+
+      controller.initialize().then((_) {
+        controller.setVolume(0.0);
+        controller.setLooping(true);
+        controller.play();
+        if (mounted) setState(() {});
+      }).catchError((error) {
+        debugPrint("Video Load Error for $path: $error");
+      });
+    }
   }
 
   @override
   void dispose() {
     _sparkleController.dispose();
     _simulatedVideoController.dispose();
+    _breathingHeroController.dispose();
     _scrollController.dispose();
+    for (var controller in _videoControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -62,14 +92,12 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // 1. The Deep 3D Animated Background
           _buildDynamicBackground(),
-
-          // 2. The Main Scroll Cascade
           _buildMainExhibition(),
 
-          // 3. The Magnetic Scaling Header
+          // The original Unbound Magnetic Header (Fades and scales out)
           _buildMagneticBrandHeader(),
         ],
       ),
@@ -81,32 +109,30 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
     return Positioned.fill(
       child: Stack(
         children: [
-          // Radial Glow
           AnimatedBuilder(
             animation: _sparkleController,
             builder: (context, child) {
               return Positioned(
                 top: -150,
-                right: -100 + (math.sin(_sparkleController.value * math.pi * 2) * 50),
+                right: -100 + (math.sin(_sparkleController.value * math.pi * 2) * 80),
                 child: Container(
-                  width: 500, height: 500,
+                  width: 600, height: 600,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: luxuryGold.withValues(alpha: 0.03),
-                    boxShadow: [BoxShadow(color: luxuryGold.withValues(alpha: 0.06), blurRadius: 150, spreadRadius: 80)],
+                    boxShadow: [BoxShadow(color: luxuryGold.withValues(alpha: 0.04), blurRadius: 200, spreadRadius: 100)],
                   ),
                 ),
               );
             },
           ),
-          // Geometric Diamond Lattice (Makes the negative space feel ultra-premium)
           AnimatedBuilder(
               animation: _sparkleController,
               builder: (context, child) {
                 return CustomPaint(
                   size: Size.infinite,
                   painter: _DiamondLatticePainter(
-                    color: Colors.white.withValues(alpha: 0.015),
+                    color: Colors.white.withValues(alpha: 0.012),
                     rotation: _sparkleController.value * math.pi * 2,
                   ),
                 );
@@ -117,12 +143,12 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
     );
   }
 
-  // --- 2. THE MAGNETIC HEADER ---
+  // --- 2. THE UNBOUND MAGNETIC HEADER ---
   Widget _buildMagneticBrandHeader() {
-    final double progress = (_scrollOffset / 250).clamp(0.0, 1.0);
-    final double scale = 1.0 + (progress * 1.5);
+    final double progress = (_scrollOffset / 200).clamp(0.0, 1.0);
     final double opacity = 1.0 - progress;
-    final double blurAmount = progress * 10;
+    final double scale = 1.0 + (progress * 0.6);
+    final double letterSpacing = 18 + (progress * 30);
 
     if (opacity <= 0.01) return const SizedBox.shrink();
 
@@ -133,28 +159,45 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
           child: Padding(
             padding: const EdgeInsets.only(top: 20),
             child: Center(
-              child: Transform.scale(
-                scale: scale,
-                child: ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: blurAmount, sigmaY: blurAmount),
-                    child: Opacity(
-                      opacity: opacity,
-                      child: Text(
-                          'JEWEL SMART',
-                          style: TextStyle(
-                              color: luxuryGold,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                              letterSpacing: 18,
-                              shadows: [Shadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 20)]
-                          )
+              child: Opacity(
+                opacity: opacity,
+                child: Transform.scale(
+                  scale: scale,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'JEWEL SMART',
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.visible,
+                      style: TextStyle(
+                        color: luxuryGold,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        letterSpacing: letterSpacing,
+                        shadows: [Shadow(color: Colors.black.withValues(alpha: 0.8 * opacity), blurRadius: 30)],
                       ),
                     ),
                   ),
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- THE SPOTLIGHT SHROUD ---
+  Widget _buildSpotlightShroud() {
+    return Positioned.fill(
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black, Colors.transparent, Colors.transparent, Colors.black],
+            stops: [0.0, 0.20, 0.80, 1.0],
           ),
         ),
       ),
@@ -168,12 +211,8 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
       physics: const BouncingScrollPhysics(),
       child: Column(
         children: [
-          // Massive Top Hero
           _buildPerspectiveHero(),
-
-          const SizedBox(height: 20),
-
-          // Constrained Web Scaler for internal content
+          const SizedBox(height: 40),
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1400),
@@ -181,29 +220,25 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildDynamicCategoryBar(),
+                  const SizedBox(height: 100),
 
-                  const SizedBox(height: 80),
+                  _buildCinematicCampaignScene(),
+                  const SizedBox(height: 120),
 
-                  // THE AUTOPLAY "VIDEO" SCENE
-                  _buildSimulatedVideoScene(),
-
-                  const SizedBox(height: 80),
-
-                  // ASYMMETRICAL EDITORIAL BLOCK
                   _buildAsymmetricalEditorial(),
+                  const SizedBox(height: 120),
 
-                  const SizedBox(height: 80),
-
-                  _buildSectionLabel("THE CURATED EXHIBIT"),
-
-                  // Live Responsive Database Grid
+                  _buildSectionLabel("THE HIGH JEWELRY EXHIBIT"),
                   _buildStaggeredGallery(),
+                  const SizedBox(height: 150),
 
-                  const SizedBox(height: 60),
+                  // 3-VIDEO RESPONSIVE GALLERY (Perfectly Fitted)
+                  _buildSectionLabel("THE ATELIER ARCHIVES"),
+                  _buildPerfectTripleVideoGallery(),
+                  const SizedBox(height: 120),
 
-                  _buildGlobalFooter(),
-
-                  const SizedBox(height: 120), // Navigation Dock Buffer
+                  // SLEEK PREMIUM FOOTER
+                  _buildSleekPremiumFooter(),
                 ],
               ),
             ),
@@ -216,10 +251,10 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
   // --- 4. THE PERSPECTIVE HERO (login_bg.jpg) ---
   Widget _buildPerspectiveHero() {
     final screenHeight = MediaQuery.of(context).size.height;
-    final heroHeight = screenHeight > 1000 ? 800.0 : screenHeight * 0.85;
+    final heroHeight = screenHeight > 1000 ? 850.0 : screenHeight * 0.85;
 
-    final double parallaxOffset = _scrollOffset * 0.35;
-    final double scaleGrowth = 1.05 + (_scrollOffset * 0.0005);
+    final double imageParallax = _scrollOffset * 0.4;
+    final double textParallax = _scrollOffset * 0.6;
 
     return SizedBox(
       height: heroHeight,
@@ -227,62 +262,57 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // The Image Layer
           ClipRect(
-            child: Transform.translate(
-              offset: Offset(0, parallaxOffset),
-              child: Transform.scale(
-                scale: scaleGrowth,
-                child: Image.asset(
-                  'assets/images/login_bg.jpg',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                  errorBuilder: (context, error, stackTrace) => Container(color: Colors.black),
-                ),
-              ),
+            child: AnimatedBuilder(
+                animation: _breathingHeroController,
+                builder: (context, child) {
+                  final double breatheScale = 1.15 + (_breathingHeroController.value * 0.15);
+                  return Transform.translate(
+                    offset: Offset(0, imageParallax),
+                    child: Transform.scale(
+                      scale: breatheScale,
+                      child: Image.asset(
+                        'assets/images/login_bg.jpg',
+                        fit: BoxFit.cover,
+                        alignment: Alignment.center,
+                        errorBuilder: (context, error, stackTrace) => Container(color: Colors.black),
+                      ),
+                    ),
+                  );
+                }
             ),
           ),
-
-          // Depth Gradients
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.3),
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.95),
-                  ],
-                  stops: const [0.0, 0.4, 1.0]
-              ),
-            ),
-          ),
-
-          // Typography
+          _buildSpotlightShroud(),
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1400),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.only(left: 30, bottom: 80),
+                padding: const EdgeInsets.only(left: 35, bottom: 100),
                 alignment: Alignment.bottomLeft,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("COLLECTION • 2026", style: TextStyle(color: luxuryGold, letterSpacing: 8, fontSize: 10, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 15),
-                    const Text("ETHEREAL\nRADIANCE", style: TextStyle(color: Colors.white, fontSize: 62, fontWeight: FontWeight.w100, height: 0.85, letterSpacing: -2)),
-                    const SizedBox(height: 40),
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.mediumImpact();
-                        Navigator.pushNamed(context, AppRoutes.category, arguments: "ALL EXHIBITS");
-                      },
-                      child: _buildCinematicButton("EXPLORE THE VAULT"),
-                    ),
-                  ],
+                child: Transform.translate(
+                  offset: Offset(0, -textParallax),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("COLLECTION • MMXVI", style: TextStyle(color: luxuryGold, letterSpacing: 8, fontSize: 9, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 15),
+                      const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text("ETHEREAL\nRADIANCE", style: TextStyle(color: Colors.white, fontSize: 62, fontWeight: FontWeight.w100, height: 0.9, letterSpacing: -2)),
+                      ),
+                      const SizedBox(height: 45),
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          Navigator.pushNamed(context, AppRoutes.category, arguments: "ALL EXHIBITS");
+                        },
+                        child: _buildCinematicButton("EXPLORE THE VAULT"),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -292,36 +322,33 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
     );
   }
 
-  // --- 5. THE SIMULATED VIDEO SCENE (new1.jpeg) ---
-  Widget _buildSimulatedVideoScene() {
+  // --- 5. THE CINEMATIC CAMPAIGN SCENE ---
+  Widget _buildCinematicCampaignScene() {
+    final double imageParallax = ((_scrollOffset - 800) * 0.3).clamp(-150.0, 150.0);
+    final double textParallax = ((_scrollOffset - 800) * 0.5).clamp(-150.0, 150.0);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: GestureDetector(
         onTap: () {
-          // FIXED: Wired to route to the exhibits when tapped
           HapticFeedback.lightImpact();
           Navigator.pushNamed(context, AppRoutes.category, arguments: "ALL EXHIBITS");
         },
-        child: Container(
-          height: 500,
+        child: SizedBox(
+          height: 550,
           width: double.infinity,
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 0.5),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 60, spreadRadius: 10)],
-          ),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // The Auto-Panning Engine
               ClipRect(
                 child: AnimatedBuilder(
                     animation: _simulatedVideoController,
                     builder: (context, child) {
-                      final double panOffset = math.sin(_simulatedVideoController.value * math.pi) * 30;
+                      final double panOffset = math.sin(_simulatedVideoController.value * math.pi) * 20;
                       return Transform.translate(
-                        offset: Offset(panOffset, 0),
+                        offset: Offset(panOffset, imageParallax),
                         child: Transform.scale(
-                          scale: 1.15,
+                          scale: 1.35,
                           child: Image.asset(
                             'assets/images/new1.jpeg',
                             fit: BoxFit.cover,
@@ -334,28 +361,28 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
                 ),
               ),
 
-              // Vignette to pop text
-              Container(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.center,
-                    radius: 1.0,
-                    colors: [Colors.transparent, Colors.black.withValues(alpha: 0.6)],
-                  ),
-                ),
-              ),
+              _buildSpotlightShroud(),
 
-              // Overlay Typography
               Padding(
                 padding: const EdgeInsets.all(40),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text("THE BRIDAL CAMPAIGN", style: TextStyle(color: luxuryGold, fontSize: 8, letterSpacing: 8, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 15),
-                    const Text("FOREVER BEGINS", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 42, letterSpacing: 2, fontWeight: FontWeight.w100, height: 1.1)),
-                  ],
+                child: Transform.translate(
+                  offset: Offset(0, textParallax * 0.5),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text("THE BRIDAL CAMPAIGN", style: TextStyle(color: luxuryGold, fontSize: 8, letterSpacing: 10, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 15),
+                      const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text("FOREVER BEGINS", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 44, letterSpacing: 2, fontWeight: FontWeight.w100, height: 1.1)),
+                      ),
+                      const SizedBox(height: 25),
+                      Container(height: 1, width: 40, color: luxuryGold.withValues(alpha: 0.4)),
+                      const SizedBox(height: 25),
+                      const Text("Discover rings forged from legacy,\ndesigned to bind eternity.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white60, fontSize: 10, letterSpacing: 2, height: 1.6, fontWeight: FontWeight.w300)),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -365,7 +392,7 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
     ).animate().fadeIn(duration: 1000.ms).slideY(begin: 0.1, end: 0);
   }
 
-  // --- 6. THE ASYMMETRICAL EDITORIAL (new2.jpeg) ---
+  // --- 6. TRUE ASYMMETRICAL EDITORIAL LOOKBOOK ---
   Widget _buildAsymmetricalEditorial() {
     final isDesktop = MediaQuery.of(context).size.width > 900;
 
@@ -375,30 +402,38 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
           ? Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(flex: 2, child: _buildEditorialTypography("ARTISANAL\nMASTERY", "Masculine bold lines meeting delicate precision. View the exclusive high jewelry collection for men.", alignRight: true)),
-          Expanded(flex: 3, child: _buildEditorialImage('assets/images/new2.jpeg', 600)),
+          Expanded(flex: 2, child: _buildEditorialTypography("ARTISANAL\nMASTERY", "Masculine bold lines meeting delicate precision. View the exclusive high jewelry collection.", alignRight: true)),
+          Expanded(flex: 3, child: _buildEditorialImage('assets/images/new2.jpeg', 650)),
         ],
       )
-          : Stack(
+          : Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Image anchors the back
-          Padding(
-            padding: const EdgeInsets.only(left: 30, bottom: 60),
-            child: _buildEditorialImage('assets/images/new2.jpeg', 450),
-          ),
-          // Glassmorphic typography overlaps on the Z-axis
-          Positioned(
-            bottom: 0, left: 0, right: 30,
-            child: ClipRRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                child: Container(
-                  padding: const EdgeInsets.all(35),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    border: Border(left: BorderSide(color: luxuryGold, width: 2)),
+          _buildEditorialImage('assets/images/new2.jpeg', 500),
+
+          Transform.translate(
+            offset: const Offset(0, -50),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FractionallySizedBox(
+                widthFactor: 0.9,
+                child: ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                    child: Container(
+                      padding: const EdgeInsets.all(35),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        border: Border(
+                          top: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5),
+                          left: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5),
+                          right: BorderSide(color: luxuryGold, width: 3),
+                        ),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 40, spreadRadius: -10)],
+                      ),
+                      child: _buildEditorialTypography("ARTISANAL\nMASTERY", "Masculine bold lines meeting delicate precision. Discover the collection."),
+                    ),
                   ),
-                  child: _buildEditorialTypography("ARTISANAL\nMASTERY", "Masculine bold lines meeting delicate precision. Discover the collection."),
                 ),
               ),
             ),
@@ -409,16 +444,36 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
   }
 
   Widget _buildEditorialImage(String path, double height) {
+    final double safeParallax = ((_scrollOffset - 1500) * 0.25).clamp(-100.0, 100.0);
+
     return Container(
       height: height,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 50, spreadRadius: 10)],
-        image: DecorationImage(
-          image: AssetImage(path),
-          fit: BoxFit.cover,
-          alignment: Alignment.topCenter,
-        ),
+      decoration: const BoxDecoration(),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRect(
+            child: AnimatedBuilder(
+                animation: _breathingHeroController,
+                builder: (context, child) {
+                  final double breatheScale = 1.15 + (_breathingHeroController.value * 0.1);
+                  return Transform.translate(
+                    offset: Offset(0, safeParallax),
+                    child: Transform.scale(
+                      scale: breatheScale,
+                      child: Image.asset(
+                        path,
+                        fit: BoxFit.cover,
+                        alignment: Alignment.center,
+                        errorBuilder: (context, error, stackTrace) => Container(color: Colors.black),
+                      ),
+                    ),
+                  );
+                }
+            ),
+          ),
+          _buildSpotlightShroud(),
+        ],
       ),
     );
   }
@@ -427,25 +482,27 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
     return Column(
       crossAxisAlignment: alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
-        Text("THE BESPOKE EXPERIENCE", style: TextStyle(color: luxuryGold, fontSize: 8, letterSpacing: 6, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 15),
-        Text(title, textAlign: alignRight ? TextAlign.right : TextAlign.left, style: const TextStyle(color: Colors.white, fontSize: 38, letterSpacing: -1, fontWeight: FontWeight.w100, height: 1.0)),
+        Text("THE BESPOKE EXPERIENCE", style: TextStyle(color: luxuryGold, fontSize: 8, letterSpacing: 8, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 20),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(title, textAlign: alignRight ? TextAlign.right : TextAlign.left, style: const TextStyle(color: Colors.white, fontSize: 38, letterSpacing: -1.5, fontWeight: FontWeight.w100, height: 1.05)),
+        ),
         const SizedBox(height: 25),
-        Text(body, textAlign: alignRight ? TextAlign.right : TextAlign.left, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11, height: 1.8, letterSpacing: 1, fontWeight: FontWeight.w300)),
-        const SizedBox(height: 40),
+        Text(body, textAlign: alignRight ? TextAlign.right : TextAlign.left, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 11, height: 1.8, letterSpacing: 1.5, fontWeight: FontWeight.w300)),
+        const SizedBox(height: 45),
         GestureDetector(
           onTap: () {
-            // FIXED: Fully operational routing
             HapticFeedback.selectionClick();
             Navigator.pushNamed(context, AppRoutes.category, arguments: "ALL EXHIBITS");
           },
-          behavior: HitTestBehavior.opaque, // Ensures the entire row is clickable
+          behavior: HitTestBehavior.opaque,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (alignRight) Icon(Icons.arrow_back_ios_new_rounded, color: luxuryGold, size: 10),
               if (alignRight) const SizedBox(width: 15),
-              const Text("DISCOVER COLLECTION", style: TextStyle(color: Colors.white, fontSize: 9, letterSpacing: 4, fontWeight: FontWeight.bold)),
+              const Text("DISCOVER COLLECTION", style: TextStyle(color: Colors.white, fontSize: 9, letterSpacing: 5, fontWeight: FontWeight.bold)),
               if (!alignRight) const SizedBox(width: 15),
               if (!alignRight) Icon(Icons.arrow_forward_ios_rounded, color: luxuryGold, size: 10),
             ],
@@ -480,7 +537,7 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
                     },
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 35),
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.02),
                         border: Border.all(color: luxuryGold.withValues(alpha: 0.3), width: 0.5),
@@ -525,8 +582,8 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossAxisCount,
-                mainAxisSpacing: 35,
-                crossAxisSpacing: 25,
+                mainAxisSpacing: 40,
+                crossAxisSpacing: 30,
                 childAspectRatio: 0.55,
               ),
               itemCount: products.length,
@@ -534,7 +591,7 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
                 final product = products[index];
 
                 return Transform.translate(
-                  offset: Offset(0, index.isEven ? 0 : 40),
+                  offset: Offset(0, index.isEven ? 0 : 50),
                   child: AnimationConfiguration.staggeredGrid(
                     position: index,
                     duration: const Duration(milliseconds: 1000),
@@ -560,41 +617,124 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
     );
   }
 
-  // --- UTILS ---
-  Widget _buildGlobalFooter() {
+  // --- 9. PERFECTLY SCALED 3-GRID VIDEO GALLERY ---
+  Widget _buildPerfectTripleVideoGallery() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: LayoutBuilder(
+          builder: (context, constraints) {
+            double containerHeight = (constraints.maxWidth / 3) * (16 / 9);
+            if (containerHeight > 350) containerHeight = 350;
+
+            return SizedBox(
+              height: containerHeight,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(_videoControllers.length, (index) {
+                  if (index >= _videoControllers.length) return const Expanded(child: SizedBox());
+
+                  final controller = _videoControllers[index];
+
+                  return Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        right: index != 2 ? 8.0 : 0.0,
+                        left: index != 0 ? 8.0 : 0.0,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          color: Colors.white.withValues(alpha: 0.03),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              if (controller.value.isInitialized)
+                                FittedBox(
+                                  fit: BoxFit.cover,
+                                  child: SizedBox(
+                                    width: controller.value.size.width,
+                                    height: controller.value.size.height,
+                                    child: VideoPlayer(controller),
+                                  ),
+                                )
+                              else
+                                Center(child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5)),
+
+                              // Subtle vignette for premium feel
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: RadialGradient(
+                                    colors: [Colors.transparent, Colors.black.withValues(alpha: 0.5)],
+                                    radius: 1.2,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            );
+          }
+      ),
+    ).animate().fadeIn(duration: 1000.ms);
+  }
+
+  // --- 10. SLEEK & MINIMAL PREMIUM FOOTER ---
+  Widget _buildSleekPremiumFooter() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 25),
-      padding: const EdgeInsets.symmetric(vertical: 60),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 1))),
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: 50, bottom: 120, left: 20, right: 20),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 1)),
+        color: Colors.black, // Solid grounding color
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(Icons.diamond_outlined, color: luxuryGold.withValues(alpha: 0.3), size: 40),
-          const SizedBox(height: 30),
-          Text("MAISON JEWELSMART", style: TextStyle(color: luxuryGold, fontSize: 12, letterSpacing: 10, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 20),
-          Text("CRAFTING ETERNITY SINCE 2026", style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 7, letterSpacing: 5, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 50),
+          Icon(Icons.diamond_outlined, color: luxuryGold.withValues(alpha: 0.8), size: 30),
+          const SizedBox(height: 25),
+
+          Text("MAISON JEWELSMART", style: TextStyle(color: Colors.white, fontSize: 13, letterSpacing: 10, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+
+          Text("CRAFTING ETERNITY SINCE 2026", style: TextStyle(color: luxuryGold.withValues(alpha: 0.6), fontSize: 7, letterSpacing: 6, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 45),
+
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _footerLink("CLIENT CARE"), _footerLink("LEGAL"), _footerLink("BOUTIQUES"),
+              _footerLink("CLIENT CARE"),
+              _footerDivider(),
+              _footerLink("LEGAL"),
+              _footerDivider(),
+              _footerLink("BOUTIQUES"),
             ],
           ),
           const SizedBox(height: 40),
-          Text("© 2026 JEWELSMART. ALL RIGHTS RESERVED.", style: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 6, letterSpacing: 2)),
+
+          Text("© 2026 JEWELSMART MAISON. ALL RIGHTS RESERVED.", style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 6, letterSpacing: 3)),
         ],
       ),
     );
   }
 
   Widget _footerLink(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      child: GestureDetector(
-        onTap: () => HapticFeedback.selectionClick(),
-        child: Text(text, style: const TextStyle(color: Colors.white54, fontSize: 8, letterSpacing: 3, fontWeight: FontWeight.bold)),
-      ),
+    return GestureDetector(
+      onTap: () => HapticFeedback.selectionClick(),
+      child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 8, letterSpacing: 3, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _footerDivider() {
+    return Container(
+        height: 10,
+        width: 1,
+        color: luxuryGold.withValues(alpha: 0.4),
+        margin: const EdgeInsets.symmetric(horizontal: 20)
     );
   }
 
@@ -610,9 +750,36 @@ class _HomePageState extends ConsumerState<HomePage> with TickerProviderStateMix
 
   Widget _buildCinematicButton(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 45, vertical: 20),
-      decoration: BoxDecoration(border: Border.all(color: luxuryGold.withValues(alpha: 0.8), width: 0.5), color: Colors.white.withValues(alpha: 0.02)),
-      child: Text(text, style: TextStyle(color: luxuryGold, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 5)),
+      width: 250,
+      height: 60,
+      decoration: BoxDecoration(
+        border: Border.all(color: luxuryGold.withValues(alpha: 0.8), width: 0.5),
+        color: Colors.black.withValues(alpha: 0.4),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Text(text, style: TextStyle(color: luxuryGold, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 5)),
+          Positioned.fill(
+            child: AnimatedBuilder(
+                animation: _sparkleController,
+                builder: (context, child) {
+                  final double sweep = (math.sin(_sparkleController.value * math.pi * 4) + 1) / 2;
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.transparent, luxuryGold.withValues(alpha: 0.15), Colors.transparent],
+                        stops: [sweep - 0.2, sweep, sweep + 0.2],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
+                  );
+                }
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
