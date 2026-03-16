@@ -9,17 +9,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../domain/product_model.dart';
 import '../../../wishlist/providers/wishlist_provider.dart';
 
-/// THE LUXURY EXHIBIT CARD
+/// THE LUXURY EXHIBIT CARD (V2)
 /// Engineered with counter-scaling parallax, volumetric gradients, dynamic light glare,
-/// and a secure hidden Management Terminal for Admins/Staff.
+/// and a secure, modularized Management Terminal for Admins/Staff.
 class LuxuryProductCard extends StatefulWidget {
   final Product product;
   final VoidCallback onTap;
+  final String heroTagPrefix; // Added to prevent duplicate Hero tag errors
 
   const LuxuryProductCard({
     super.key,
     required this.product,
-    required this.onTap
+    required this.onTap,
+    this.heroTagPrefix = 'product_',
   });
 
   @override
@@ -60,14 +62,10 @@ class _LuxuryProductCardState extends State<LuxuryProductCard> with SingleTicker
     setState(() => _isPressed = false);
   }
 
-  // --- THE SECRET MANAGEMENT TERMINAL ---
   void _handleLongPress() {
     setState(() => _isPressed = false);
     HapticFeedback.heavyImpact();
-    _showManagementTerminal(context);
-  }
 
-  void _showManagementTerminal(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
@@ -76,148 +74,13 @@ class _LuxuryProductCardState extends State<LuxuryProductCard> with SingleTicker
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (BuildContext sheetContext) {
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: ClipRRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(25, 30, 25, 25),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.85),
-                    border: Border(
-                      top: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
-                      left: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
-                      right: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
-                    ),
-                  ),
-                  child: StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance.collection('users').doc(currentUser.uid).snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37), strokeWidth: 1.5)));
-                      }
-
-                      String role = 'customer';
-                      if (snapshot.hasData && snapshot.data!.exists) {
-                        role = (snapshot.data!.get('role') ?? 'customer').toString().toLowerCase();
-                      }
-
-                      if (role != 'admin' && role != 'staff') {
-                        return SizedBox(
-                          height: 200,
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.gpp_bad_outlined, color: Colors.redAccent.withValues(alpha: 0.8), size: 40),
-                                const SizedBox(height: 20),
-                                const Text("CLEARANCE DENIED", style: TextStyle(color: Colors.redAccent, fontSize: 10, letterSpacing: 6, fontWeight: FontWeight.w900)),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start, // FIXED: Capital C
-                        children: [
-                          Center(child: Container(width: 40, height: 2, color: Colors.white24)),
-                          const SizedBox(height: 30),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text("VAULT MANAGEMENT", style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 6, fontWeight: FontWeight.w900)),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: luxuryGold.withValues(alpha: 0.1), border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5)),
-                                child: Text(role.toUpperCase(), style: TextStyle(color: luxuryGold, fontSize: 6, letterSpacing: 2, fontWeight: FontWeight.bold)),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Text(widget.product.title.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 2, fontWeight: FontWeight.w200)),
-                          const SizedBox(height: 40),
-
-                          const Text("LOGISTICS CONTROL (STOCK)", style: TextStyle(color: Colors.white38, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 5)),
-                          const SizedBox(height: 15),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildAdminButton("DECREMENT", Icons.remove_circle_outline, Colors.orangeAccent, () => _updateStock(-1)),
-                              ),
-                              const SizedBox(width: 15),
-                              Expanded(
-                                child: _buildAdminButton("INCREMENT", Icons.add_circle_outline, Colors.greenAccent, () => _updateStock(1)),
-                              ),
-                            ],
-                          ),
-
-                          if (role == 'admin') ...[
-                            const SizedBox(height: 40),
-                            const Text("DESTRUCTIVE ACTIONS", style: TextStyle(color: Colors.white38, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 5)),
-                            const SizedBox(height: 15),
-                            _buildAdminButton("PERMANENTLY DELETE ARTIFACT", Icons.delete_forever_outlined, Colors.redAccent, () {
-                              _deleteArtifact();
-                              Navigator.pop(context);
-                            }),
-                          ],
-                          const SizedBox(height: 20),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
+        return _ManagementTerminalSheet(
+          product: widget.product,
+          currentUserUid: currentUser.uid,
+          luxuryGold: luxuryGold,
         );
       },
     );
-  }
-
-  Widget _buildAdminButton(String label, IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        onTap();
-      },
-      child: Container(
-        height: 55,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 16),
-            const SizedBox(width: 12),
-            Text(label, style: TextStyle(color: color, fontSize: 8, letterSpacing: 3, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _updateStock(int change) async {
-    try {
-      await FirebaseFirestore.instance.collection('products').doc(widget.product.id).update({
-        'stock': FieldValue.increment(change)
-      });
-    } catch (e) {
-      debugPrint("Stock Update Failed: $e");
-    }
-  }
-
-  Future<void> _deleteArtifact() async {
-    try {
-      await FirebaseFirestore.instance.collection('products').doc(widget.product.id).delete();
-    } catch (e) {
-      debugPrint("Deletion Failed: $e");
-    }
   }
 
   @override
@@ -255,7 +118,7 @@ class _LuxuryProductCardState extends State<LuxuryProductCard> with SingleTicker
                       fit: StackFit.expand,
                       children: [
                         Hero(
-                          tag: 'product_image_${widget.product.id}',
+                          tag: '${widget.heroTagPrefix}${widget.product.id}',
                           child: ClipRect(
                             child: AnimatedScale(
                               scale: _isPressed ? 1.08 : 1.0,
@@ -409,6 +272,185 @@ class _LuxuryProductCardState extends State<LuxuryProductCard> with SingleTicker
         ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 800.ms);
       },
       errorBuilder: (context, error, stackTrace) => Container(color: Colors.black, child: Center(child: Icon(Icons.broken_image_outlined, color: Colors.white.withValues(alpha: 0.1), size: 30))),
+    );
+  }
+}
+
+/// MODULARIZED MANAGEMENT TERMINAL
+class _ManagementTerminalSheet extends StatelessWidget {
+  final Product product;
+  final String currentUserUid;
+  final Color luxuryGold;
+
+  const _ManagementTerminalSheet({
+    required this.product,
+    required this.currentUserUid,
+    required this.luxuryGold,
+  });
+
+  void _showFeedback(BuildContext context, String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(letterSpacing: 1.5, fontSize: 12)),
+        backgroundColor: isError ? Colors.redAccent.withValues(alpha: 0.9) : luxuryGold.withValues(alpha: 0.9),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _updateStock(BuildContext context, int change) async {
+    try {
+      await FirebaseFirestore.instance.collection('products').doc(product.id).update({
+        'stock': FieldValue.increment(change)
+      });
+      if (context.mounted) {
+        _showFeedback(context, "STOCK ${change > 0 ? 'INCREMENTED' : 'DECREMENTED'} SUCCESSFULLY");
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showFeedback(context, "STOCK UPDATE FAILED: $e", isError: true);
+      }
+    }
+  }
+
+  Future<void> _deleteArtifact(BuildContext context) async {
+    try {
+      await FirebaseFirestore.instance.collection('products').doc(product.id).delete();
+      if (context.mounted) {
+        _showFeedback(context, "ARTIFACT PERMANENTLY DELETED");
+        Navigator.pop(context); // Close the sheet after deletion
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showFeedback(context, "DELETION FAILED: $e", isError: true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(25, 30, 25, 25),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.85),
+                border: Border(
+                  top: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
+                  left: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
+                  right: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
+                ),
+              ),
+              child: StreamBuilder<DocumentSnapshot>(
+                // Note: Consider replacing this stream with Riverpod role state in the future to save reads.
+                stream: FirebaseFirestore.instance.collection('users').doc(currentUserUid).snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return SizedBox(height: 200, child: Center(child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5)));
+                  }
+
+                  String role = 'customer';
+                  if (snapshot.hasData && snapshot.data!.exists) {
+                    role = (snapshot.data!.get('role') ?? 'customer').toString().toLowerCase();
+                  }
+
+                  if (role != 'admin' && role != 'staff') {
+                    return SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.gpp_bad_outlined, color: Colors.redAccent.withValues(alpha: 0.8), size: 40),
+                            const SizedBox(height: 20),
+                            const Text("CLEARANCE DENIED", style: TextStyle(color: Colors.redAccent, fontSize: 10, letterSpacing: 6, fontWeight: FontWeight.w900)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(child: Container(width: 40, height: 2, color: Colors.white24)),
+                      const SizedBox(height: 30),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("VAULT MANAGEMENT", style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 6, fontWeight: FontWeight.w900)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: luxuryGold.withValues(alpha: 0.1), border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5)),
+                            child: Text(role.toUpperCase(), style: TextStyle(color: luxuryGold, fontSize: 6, letterSpacing: 2, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(product.title.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 2, fontWeight: FontWeight.w200)),
+                      const SizedBox(height: 40),
+
+                      const Text("LOGISTICS CONTROL (STOCK)", style: TextStyle(color: Colors.white38, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 5)),
+                      const SizedBox(height: 15),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildAdminButton("DECREMENT", Icons.remove_circle_outline, Colors.orangeAccent, () => _updateStock(context, -1)),
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: _buildAdminButton("INCREMENT", Icons.add_circle_outline, Colors.greenAccent, () => _updateStock(context, 1)),
+                          ),
+                        ],
+                      ),
+
+                      if (role == 'admin') ...[
+                        const SizedBox(height: 40),
+                        const Text("DESTRUCTIVE ACTIONS", style: TextStyle(color: Colors.white38, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 5)),
+                        const SizedBox(height: 15),
+                        _buildAdminButton("PERMANENTLY DELETE ARTIFACT", Icons.delete_forever_outlined, Colors.redAccent, () {
+                          _deleteArtifact(context);
+                        }),
+                      ],
+                      const SizedBox(height: 20),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminButton(String label, IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        onTap();
+      },
+      child: Container(
+        height: 55,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.05),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 12),
+            Text(label, style: TextStyle(color: color, fontSize: 8, letterSpacing: 3, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
     );
   }
 }

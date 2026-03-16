@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // CRITICAL: Added for Haptic Feedback
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -11,7 +11,7 @@ import '../../auth/presentation/order_detail_screen.dart';
 
 /// THE ENCRYPTED ARCHIVE (ACQUISITION HISTORY)
 /// Engineered as a high-security spatial ledger for VIP clients.
-/// FIXED: Web Scaling and INR (₹) Currency Applied.
+/// FIXED: Collection Sync, Local Sorting, Web Scaling and INR (₹) Currency Applied.
 class AcquisitionHistoryPage extends StatefulWidget {
   const AcquisitionHistoryPage({super.key});
 
@@ -40,13 +40,14 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
 
   @override
   Widget build(BuildContext context) {
-    // Connects to the live Firestore Database for the current user
     final currentUser = FirebaseAuth.instance.currentUser;
+
+    // FIXED: Changed 'purchases' to 'orders' to match the database schema.
+    // Removed .orderBy() to prevent Firestore Composite Index Errors.
     final archiveStream = currentUser != null
         ? FirebaseFirestore.instance
-        .collection('purchases')
+        .collection('orders')
         .where('userId', isEqualTo: currentUser.uid)
-        .orderBy('purchaseDate', descending: true)
         .snapshots()
         : const Stream.empty();
 
@@ -73,6 +74,8 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
                     }
 
                     if (snapshot.hasError) {
+                      // Logs the exact error to your terminal if permissions are blocked
+                      debugPrint("Archive Security Error: ${snapshot.error}");
                       return _buildErrorState();
                     }
 
@@ -85,12 +88,16 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
                       final data = doc.data() as Map<String, dynamic>;
                       return PurchaseRecord(
                         orderId: doc.id,
-                        productName: data['productName'] ?? 'UNKNOWN ARTIFACT',
+                        // Fallback fields account for varying order document structures
+                        productName: data['productName'] ?? data['title'] ?? 'UNKNOWN ARTIFACT',
                         status: data['status'] ?? 'PROCESSING',
-                        purchaseDate: (data['purchaseDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-                        amountPaid: (data['amountPaid'] ?? 0.0).toDouble(),
+                        purchaseDate: (data['purchaseDate'] ?? data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+                        amountPaid: (data['amountPaid'] ?? data['totalAmount'] ?? 0.0).toDouble(),
                       );
                     }).toList();
+
+                    // FIXED: Sort the history locally to bypass Firestore index limitations
+                    history.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));
 
                     return _buildAnimatedLedger(history);
                   },

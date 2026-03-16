@@ -8,7 +8,7 @@ import '../../../core/router/app_routes.dart';
 
 /// THE PRIVATE VAULT (CART)
 /// Engineered to float seamlessly within the MainWrapper's 3D spatial shell.
-/// Fully synchronized with Live Firestore data, Cloudinary network assets, and INR Currency.
+/// FIXED: Implemented a sleek, horizontal sticky bottom bar to maximize vault visibility.
 class CartPage extends ConsumerWidget {
   const CartPage({super.key});
 
@@ -36,8 +36,8 @@ class CartPage extends ConsumerWidget {
               constraints: const BoxConstraints(maxWidth: 800), // Protects UI on wide monitors
               child: AnimationLimiter(
                 child: ListView.builder(
-                  // Massive bottom padding so the last item scrolls past the floating checkout & global dock
-                  padding: const EdgeInsets.fromLTRB(25, 120, 25, 380),
+                  // FIXED: Reduced bottom padding drastically since the checkout panel is now sleek
+                  padding: const EdgeInsets.fromLTRB(25, 120, 25, 200),
                   physics: const BouncingScrollPhysics(),
                   itemCount: cartItems.length,
                   itemBuilder: (context, index) {
@@ -58,7 +58,7 @@ class CartPage extends ConsumerWidget {
             ),
           ),
 
-          // 3. Floating Checkout Panel (Elevated above MainWrapper Dock)
+          // 3. Sleek Horizontal Checkout Panel
           _buildBoutiqueCheckoutPanel(context, totalAmount),
         ],
       ),
@@ -198,42 +198,56 @@ class CartPage extends ConsumerWidget {
     );
   }
 
+  // FIXED: Completely rebuilt as a sleek, horizontal docked bar
   Widget _buildBoutiqueCheckoutPanel(BuildContext context, double total) {
     final double gstAmount = total * 0.03; // 3% Indian Jewelry GST
     final double finalAmount = total + gstAmount;
 
     return Positioned(
-      bottom: 120, // CRITICAL: Floats above the MainWrapper's Navigation Dock
+      bottom: 90, // Docks perfectly just above the MainWrapper's bottom navigation bar
       left: 0,
       right: 0,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600), // Web Scaler
-          child: ClipRRect(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: ClipRect(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
               child: Container(
-                padding: const EdgeInsets.all(35),
+                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
                 decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
+                    color: Colors.black.withValues(alpha: 0.85),
+                    border: Border(top: BorderSide(color: luxuryGold.withValues(alpha: 0.3), width: 0.5)),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 10)
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.9), blurRadius: 30, spreadRadius: 10)
                     ]
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _priceRow("SUBTOTAL", "₹${total.toStringAsFixed(2)}", isSmall: true),
-                    const SizedBox(height: 12),
-                    _priceRow("ESTIMATED GST (3%)", "₹${gstAmount.toStringAsFixed(2)}", isSmall: true),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 25),
-                      child: Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
+                    // LEFT: Tight Price Audit
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text("TOTAL (INC. 3% GST)", style: TextStyle(color: Colors.white38, fontSize: 7, letterSpacing: 3, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 5),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text("₹${finalAmount.toStringAsFixed(2)}", style: TextStyle(color: luxuryGold, fontSize: 20, fontWeight: FontWeight.w300, letterSpacing: 1)),
+                          ),
+                        ],
+                      ),
                     ),
-                    _priceRow("TOTAL ACQUISITION", "₹${finalAmount.toStringAsFixed(2)}", isSmall: false),
-                    const SizedBox(height: 35),
-                    _buildSecureAction(context),
+                    const SizedBox(width: 20),
+                    // RIGHT: CTA Button
+                    SizedBox(
+                      width: 150,
+                      height: 50,
+                      child: _buildSecureAction(context),
+                    ),
                   ],
                 ),
               ),
@@ -241,36 +255,13 @@ class CartPage extends ConsumerWidget {
           ),
         ),
       ),
-    ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.2, end: 0, curve: Curves.easeOutQuart);
-  }
-
-  Widget _priceRow(String label, String value, {required bool isSmall}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-            label,
-            style: TextStyle(color: isSmall ? Colors.white38 : Colors.white70, fontSize: 8, letterSpacing: 4, fontWeight: FontWeight.bold)
-        ),
-        Text(
-            value,
-            style: TextStyle(
-                color: isSmall ? Colors.white : luxuryGold,
-                fontSize: isSmall ? 12 : 24,
-                fontWeight: isSmall ? FontWeight.w400 : FontWeight.w200,
-                letterSpacing: 2
-            )
-        ),
-      ],
-    );
+    ).animate().fadeIn(duration: 800.ms).slideY(begin: 1.0, end: 0, curve: Curves.easeOutQuart);
   }
 
   Widget _buildSecureAction(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, AppRoutes.checkout),
       child: Container(
-        width: double.infinity,
-        height: 65,
         decoration: BoxDecoration(
             color: luxuryGold.withValues(alpha: 0.9),
             boxShadow: [
@@ -280,7 +271,7 @@ class CartPage extends ConsumerWidget {
         child: const Center(
           child: Text(
               "SECURE ACCESS",
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 6, fontSize: 10)
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 3, fontSize: 9)
           ),
         ),
       ),

@@ -10,10 +10,12 @@ class Product {
   final int stock;
   final DateTime createdAt;
 
-  // Add these for backward compatibility with your existing UI
   final double purity;
   final double weight;
   final double makingCharges;
+
+  // NEW: Gemstone Identifier
+  final String primaryStone;
 
   Product({
     required this.id,
@@ -27,14 +29,12 @@ class Product {
     this.purity = 22.0,
     this.weight = 0.0,
     this.makingCharges = 0.0,
+    this.primaryStone = '', // Added
   });
 
-  // ALIAS GETTERS: These fix the "Undefined Getter" errors in your terminal
   String get productId => id;
   String get imagePath => imageUrl;
   double get totalPayableAmount => price + makingCharges;
-
-  // CRITICAL FIX: The Global Currency Standard is now permanently set to INR
   String get formattedPrice => "₹${price.toStringAsFixed(2)}";
 
   Map<String, dynamic> toMap() {
@@ -50,6 +50,7 @@ class Product {
       'purity': purity,
       'weight': weight,
       'makingCharges': makingCharges,
+      'primaryStone': primaryStone, // Added
     };
   }
 
@@ -67,6 +68,7 @@ class Product {
       purity: (data['purity'] ?? 22.0).toDouble(),
       weight: (data['weight'] ?? 0.0).toDouble(),
       makingCharges: (data['makingCharges'] ?? 0.0).toDouble(),
+      primaryStone: data['primaryStone'] ?? '', // Added
     );
   }
 }

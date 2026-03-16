@@ -12,7 +12,7 @@ import 'widgets/luxury_product_card.dart';
 
 /// THE DISCOVERY ENGINE (SEARCH)
 /// Engineered as a liquid, glassmorphic search interface connected to the live Firestore matrix.
-/// Fully responsive across Web, Tablet, and Mobile.
+/// FIXED: Deep-Index Searching, Expanded Luxury Price Caps, and Flexible Metadata Matching.
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
@@ -27,10 +27,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
   String _selectedStone = 'All';
   String _selectedMetal = 'All';
   String _searchQuery = '';
-  double _maxPrice = 100000.0;
 
-  final List<String> stones = ['All', 'Emerald', 'Diamond', 'Ruby', 'Sapphire'];
-  final List<String> metals = ['All', '22K', '18K', 'Silver'];
+  // CRITICAL FIX: Luxury scaling. Default max price is now 50 Lakhs to prevent hiding high-end items.
+  double _maxPrice = 5000000.0;
+
+  final List<String> stones = ['All', 'Emerald', 'Diamond', 'Ruby', 'Sapphire', 'Pearl'];
+  final List<String> metals = ['All', '24K', '22K', '18K', '14K', 'Platinum', 'Silver'];
 
   @override
   void dispose() {
@@ -38,20 +40,32 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
     super.dispose();
   }
 
-  // LOGIC: Filter products based on the Live Database stream
+  // --- THE DEEP SEARCH ENGINE ---
   List<Product> _getFilteredProducts(List<Product> sourceProducts) {
     return sourceProducts.where((product) {
+
+      // 1. Flexible Stone Matching (Checks Title, Description, and Category)
       final matchesStone = _selectedStone == 'All' ||
           product.title.toUpperCase().contains(_selectedStone.toUpperCase()) ||
-          product.description.toUpperCase().contains(_selectedStone.toUpperCase());
+          product.description.toUpperCase().contains(_selectedStone.toUpperCase()) ||
+          product.category.toUpperCase().contains(_selectedStone.toUpperCase());
 
+      // 2. Flexible Metal/Purity Matching
       final purityString = "${product.purity.toInt()}K";
       final matchesMetal = _selectedMetal == 'All' ||
           purityString == _selectedMetal.toUpperCase() ||
-          (_selectedMetal == 'Silver' && product.title.toUpperCase().contains('SILVER'));
+          product.title.toUpperCase().contains(_selectedMetal.toUpperCase()) ||
+          product.description.toUpperCase().contains(_selectedMetal.toUpperCase());
 
-      final matchesSearch = product.title.toLowerCase().contains(_searchQuery.toLowerCase());
+      // 3. DEEP INDEX SEARCH (Fixes Issue #5)
+      // Now scans Title, Category, and Description simultaneously.
+      final safeQuery = _searchQuery.trim().toLowerCase();
+      final matchesSearch = safeQuery.isEmpty ||
+          product.title.toLowerCase().contains(safeQuery) ||
+          product.category.toLowerCase().contains(safeQuery) ||
+          product.description.toLowerCase().contains(safeQuery);
 
+      // 4. Accurate Price Valuation
       final double totalPrice = product.price + product.makingCharges;
       final matchesPrice = totalPrice <= _maxPrice;
 
@@ -59,7 +73,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
     }).toList();
   }
 
-  // THE HIDDEN ATELIER: Slides up a responsive glassmorphic sheet
+  // --- THE HIDDEN ATELIER (FILTERS) ---
   void _showFilterAtelier(BuildContext context) {
     String tempStone = _selectedStone;
     String tempMetal = _selectedMetal;
@@ -74,7 +88,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
           builder: (context, setSheetState) {
             return Center(
               child: ConstrainedBox(
-                // RESPONSIVE FIX: Caps the width of the bottom sheet on Desktop Web
                 constraints: const BoxConstraints(maxWidth: 600),
                 child: ClipRRect(
                   child: BackdropFilter(
@@ -83,7 +96,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
                       height: MediaQuery.of(context).size.height * 0.75,
                       padding: const EdgeInsets.fromLTRB(25, 30, 25, 25),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.8),
+                        color: Colors.black.withValues(alpha: 0.85),
                         border: Border(
                           top: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
                           left: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
@@ -102,11 +115,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
                           _buildSheetOptions(stones, tempStone, (val) => setSheetState(() => tempStone = val)),
                           const SizedBox(height: 30),
 
-                          _buildSheetLabel("PURITY"),
+                          _buildSheetLabel("PURITY & METAL"),
                           _buildSheetOptions(metals, tempMetal, (val) => setSheetState(() => tempMetal = val)),
                           const SizedBox(height: 30),
 
-                          _buildSheetLabel("ACQUISITION THRESHOLD: UNDER \$${tempPrice.toInt()}"),
+                          _buildSheetLabel("ACQUISITION LIMIT: ₹${tempPrice.toInt().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}"),
                           const SizedBox(height: 10),
                           SliderTheme(
                             data: SliderTheme.of(context).copyWith(
@@ -121,8 +134,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
                             child: Slider(
                               value: tempPrice,
                               min: 10000,
-                              max: 200000,
-                              divisions: 38,
+                              max: 5000000, // Up to 50 Lakhs
+                              divisions: 50,
                               onChanged: (val) => setSheetState(() => tempPrice = val),
                             ),
                           ),
@@ -207,7 +220,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
-    bool hasActiveFilters = _selectedStone != 'All' || _selectedMetal != 'All' || _maxPrice < 200000;
+    bool hasActiveFilters = _selectedStone != 'All' || _selectedMetal != 'All' || _maxPrice < 5000000;
     final productsAsyncValue = ref.watch(productStreamProvider);
 
     return Scaffold(
@@ -219,14 +232,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
             bottom: false,
             child: Center(
               child: ConstrainedBox(
-                // RESPONSIVE FIX: Caps the entire search interface on Desktop Web
                 constraints: const BoxConstraints(maxWidth: 1400),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildLiquidSearchBar(context, hasActiveFilters),
 
-                    // Handle the Stream States
                     Expanded(
                       child: productsAsyncValue.when(
                         data: (products) {
@@ -238,7 +249,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
                               Expanded(
                                 child: filteredResults.isEmpty
                                     ? _buildNoResults()
-                                    : _buildResponsiveResultsGrid(filteredResults), // Updated Grid
+                                    : _buildResponsiveResultsGrid(filteredResults),
                               ),
                             ],
                           );
@@ -284,7 +295,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
   Widget _buildLiquidSearchBar(BuildContext context, bool hasActiveFilters) {
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 800), // Max width for search bar specifically
+        constraints: const BoxConstraints(maxWidth: 800),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(25, 20, 25, 10),
           child: Row(
@@ -319,7 +330,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
               ),
               const SizedBox(width: 15),
 
-              // FILTER TOGGLE BUTTON
               GestureDetector(
                 onTap: () => _showFilterAtelier(context),
                 child: ClipRRect(
@@ -369,11 +379,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
     );
   }
 
-  // CRITICAL UPDATE: Responsive Column Scaling based on Screen Width
   Widget _buildResponsiveResultsGrid(List<Product> products) {
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // INTELLIGENT SCALING: Mobile = 2, Tablet = 3, Small Desktop = 4, Ultrawide = 5
     int crossAxisCount = 2;
     if (screenWidth >= 1200) {
       crossAxisCount = 5;
@@ -389,7 +397,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
         padding: const EdgeInsets.fromLTRB(25, 10, 25, 150),
         physics: const BouncingScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount, // Applied responsive columns
+          crossAxisCount: crossAxisCount,
           childAspectRatio: 0.58,
           crossAxisSpacing: 25,
           mainAxisSpacing: 30,
@@ -421,13 +429,18 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.diamond_outlined, color: luxuryGold.withValues(alpha: 0.15), size: 60)
+          Icon(Icons.search_off_rounded, color: luxuryGold.withValues(alpha: 0.15), size: 60)
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), duration: 2.seconds),
           const SizedBox(height: 30),
           const Text(
-            "THE COLLECTION IS STILL EVOLVING",
+            "NO ARTIFACTS MATCH YOUR CRITERIA",
             style: TextStyle(color: Colors.white38, letterSpacing: 6, fontSize: 8, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            "Try broadening your search or adjusting the filters.",
+            style: TextStyle(color: Colors.white24, letterSpacing: 1.5, fontSize: 9, fontWeight: FontWeight.w300),
           ),
         ],
       ),
