@@ -26,7 +26,8 @@ class AppRoutes {
   // 6. Dashboards & Administration
   static const String adminDashboard = '/admin-dashboard';
   static const String staffDashboard = '/staff-dashboard';
-  static const String repairManagement = '/repair-management';
+  static const String repairManagement = '/repair-management'; //  for admins
+  static const String repairRequest = '/repair-request'; // For customers
   static const String addProduct = '/add-product';
 
   // Note: acquisitionHistory is now handled via a Glassmorphic Modal in ProfilePage,

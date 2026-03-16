@@ -156,6 +156,12 @@ class ProfilePage extends StatelessWidget {
                 Navigator.pushNamed(context, '/acquisition-history');
               }),
               _vaultItem(Icons.favorite_border_rounded, "CURATED WISHLIST", onTap: () {}),
+
+              // --- FIXED: ROUTING TO THE CUSTOMER-FACING REPAIR REQUEST FORM ---
+              _vaultItem(Icons.handyman_outlined, "REQUEST REPAIR / CARE", onTap: () {
+                Navigator.pushNamed(context, '/repair-request');
+              }),
+
               _vaultItem(Icons.location_on_outlined, "SECURE ADDRESSES", onTap: () {}),
               _vaultItem(Icons.verified_user_outlined, "CERTIFICATES & AUTHENTICITY", onTap: () {}),
               _vaultItem(Icons.settings_outlined, "VAULT SETTINGS", onTap: () {}),

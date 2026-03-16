@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../domain/product_model.dart';
 import '../../../wishlist/providers/wishlist_provider.dart';
+import '../../providers/user_profile_provider.dart'; // Import the new provider
 
 /// THE LUXURY EXHIBIT CARD (V2)
 /// Engineered with counter-scaling parallax, volumetric gradients, dynamic light glare,
@@ -276,8 +277,8 @@ class _LuxuryProductCardState extends State<LuxuryProductCard> with SingleTicker
   }
 }
 
-/// MODULARIZED MANAGEMENT TERMINAL
-class _ManagementTerminalSheet extends StatelessWidget {
+/// MODULARIZED MANAGEMENT TERMINAL (RIVERPOD OPTIMIZED)
+class _ManagementTerminalSheet extends ConsumerWidget {
   final Product product;
   final String currentUserUid;
   final Color luxuryGold;
@@ -329,7 +330,15 @@ class _ManagementTerminalSheet extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Instantly read the role from the global provider! No extra Firestore document read.
+    final userProfile = ref.watch(userProfileProvider);
+    String role = 'customer';
+
+    if (userProfile.value != null) {
+      role = (userProfile.value!['role'] ?? 'customer').toString().toLowerCase();
+    }
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
@@ -346,82 +355,65 @@ class _ManagementTerminalSheet extends StatelessWidget {
                   right: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
                 ),
               ),
-              child: StreamBuilder<DocumentSnapshot>(
-                // Note: Consider replacing this stream with Riverpod role state in the future to save reads.
-                stream: FirebaseFirestore.instance.collection('users').doc(currentUserUid).snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return SizedBox(height: 200, child: Center(child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1.5)));
-                  }
-
-                  String role = 'customer';
-                  if (snapshot.hasData && snapshot.data!.exists) {
-                    role = (snapshot.data!.get('role') ?? 'customer').toString().toLowerCase();
-                  }
-
-                  if (role != 'admin' && role != 'staff') {
-                    return SizedBox(
-                      height: 200,
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.gpp_bad_outlined, color: Colors.redAccent.withValues(alpha: 0.8), size: 40),
-                            const SizedBox(height: 20),
-                            const Text("CLEARANCE DENIED", style: TextStyle(color: Colors.redAccent, fontSize: 10, letterSpacing: 6, fontWeight: FontWeight.w900)),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              child: (role != 'admin' && role != 'staff')
+                  ? SizedBox(
+                height: 200,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Center(child: Container(width: 40, height: 2, color: Colors.white24)),
-                      const SizedBox(height: 30),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text("VAULT MANAGEMENT", style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 6, fontWeight: FontWeight.w900)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: luxuryGold.withValues(alpha: 0.1), border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5)),
-                            child: Text(role.toUpperCase(), style: TextStyle(color: luxuryGold, fontSize: 6, letterSpacing: 2, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(product.title.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 2, fontWeight: FontWeight.w200)),
-                      const SizedBox(height: 40),
-
-                      const Text("LOGISTICS CONTROL (STOCK)", style: TextStyle(color: Colors.white38, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 5)),
-                      const SizedBox(height: 15),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildAdminButton("DECREMENT", Icons.remove_circle_outline, Colors.orangeAccent, () => _updateStock(context, -1)),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: _buildAdminButton("INCREMENT", Icons.add_circle_outline, Colors.greenAccent, () => _updateStock(context, 1)),
-                          ),
-                        ],
-                      ),
-
-                      if (role == 'admin') ...[
-                        const SizedBox(height: 40),
-                        const Text("DESTRUCTIVE ACTIONS", style: TextStyle(color: Colors.white38, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 5)),
-                        const SizedBox(height: 15),
-                        _buildAdminButton("PERMANENTLY DELETE ARTIFACT", Icons.delete_forever_outlined, Colors.redAccent, () {
-                          _deleteArtifact(context);
-                        }),
-                      ],
+                      Icon(Icons.gpp_bad_outlined, color: Colors.redAccent.withValues(alpha: 0.8), size: 40),
                       const SizedBox(height: 20),
+                      const Text("CLEARANCE DENIED", style: TextStyle(color: Colors.redAccent, fontSize: 10, letterSpacing: 6, fontWeight: FontWeight.w900)),
                     ],
-                  );
-                },
+                  ),
+                ),
+              )
+                  : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(child: Container(width: 40, height: 2, color: Colors.white24)),
+                  const SizedBox(height: 30),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("VAULT MANAGEMENT", style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 6, fontWeight: FontWeight.w900)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: luxuryGold.withValues(alpha: 0.1), border: Border.all(color: luxuryGold.withValues(alpha: 0.5), width: 0.5)),
+                        child: Text(role.toUpperCase(), style: TextStyle(color: luxuryGold, fontSize: 6, letterSpacing: 2, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(product.title.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 16, letterSpacing: 2, fontWeight: FontWeight.w200)),
+                  const SizedBox(height: 40),
+
+                  const Text("LOGISTICS CONTROL (STOCK)", style: TextStyle(color: Colors.white38, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 5)),
+                  const SizedBox(height: 15),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildAdminButton("DECREMENT", Icons.remove_circle_outline, Colors.orangeAccent, () => _updateStock(context, -1)),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: _buildAdminButton("INCREMENT", Icons.add_circle_outline, Colors.greenAccent, () => _updateStock(context, 1)),
+                      ),
+                    ],
+                  ),
+
+                  if (role == 'admin') ...[
+                    const SizedBox(height: 40),
+                    const Text("DESTRUCTIVE ACTIONS", style: TextStyle(color: Colors.white38, fontSize: 7, fontWeight: FontWeight.bold, letterSpacing: 5)),
+                    const SizedBox(height: 15),
+                    _buildAdminButton("PERMANENTLY DELETE ARTIFACT", Icons.delete_forever_outlined, Colors.redAccent, () {
+                      _deleteArtifact(context);
+                    }),
+                  ],
+                  const SizedBox(height: 20),
+                ],
               ),
             ),
           ),

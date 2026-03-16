@@ -21,6 +21,7 @@ import '../../features/profile/presentation/profile_page.dart';
 import '../../features/cart/presentation/cart_page.dart';
 import '../../features/cart/presentation/checkout_page.dart'; // NEW
 import '../../features/cart/presentation/success_page.dart'; // CORRECTED PATH
+import '../../features/auth/presentation/repair_request_screen.dart';
 
 // Administrative Layers
 import '../../features/auth/presentation/admin_dashboard.dart';
@@ -39,6 +40,9 @@ class AppRouter {
     // 1. SYSTEM INITIALIZATION
       case AppRoutes.splash:
         return _cinematicRoute(const SplashScreen());
+
+      case AppRoutes.repairRequest:
+        return _cinematicRoute(const RepairRequestScreen());
 
       case AppRoutes.authWrapper:
         return _cinematicRoute(const AuthWrapper());

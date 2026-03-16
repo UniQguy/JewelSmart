@@ -1,6 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 // Editorial Dashboards & Global Shell
@@ -8,74 +7,58 @@ import '../../main_wrapper.dart';
 import 'login_page.dart';
 import 'staff_dashboard.dart';
 import 'admin_dashboard.dart';
+import '../providers/user_profile_provider.dart';
 
 /// WORLD-CLASS AUTHENTICATION GATEKEEPER
 /// Optimized for seamless role-based routing, spatial continuity, and cinematic crossfading.
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const Color luxuryGold = Color(0xFFD4AF37);
 
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        Widget nextScreen;
+    // Read global states instantly
+    final authState = ref.watch(authStateProvider);
+    final userProfile = ref.watch(userProfileProvider);
 
-        // 1. SESSION INITIALIZING: Cinematic Entry
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          nextScreen = _cinematicLoader(luxuryGold, key: const ValueKey('loader_auth'));
-        }
+    Widget nextScreen;
 
-        // 2. AUTHENTICATED STATE: Optimized Role-Check
-        else if (snapshot.hasData && snapshot.data != null) {
-          final User user = snapshot.data!;
+    // 1. SESSION INITIALIZING: Cinematic Entry
+    if (authState.isLoading || userProfile.isLoading) {
+      nextScreen = _cinematicLoader(luxuryGold, key: const ValueKey('loader_auth'));
+    }
+    // 2. UNAUTHENTICATED: The Private Vault Entrance
+    else if (authState.value == null) {
+      nextScreen = const LoginPage(key: ValueKey('login_page'));
+    }
+    // 3. AUTHENTICATED STATE: Optimized Role-Check
+    else {
+      String role = 'customer';
+      if (userProfile.value != null) {
+        role = (userProfile.value!['role'] ?? 'customer').toString().toLowerCase();
+      }
 
-          nextScreen = StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .snapshots(),
-            builder: (context, userSnapshot) {
-              if (userSnapshot.connectionState == ConnectionState.waiting) {
-                return _cinematicLoader(luxuryGold, key: const ValueKey('loader_doc'));
-              }
+      // High-Caliber Routing Logic (Secured with ValueKeys for smooth transitions)
+      switch (role) {
+        case "admin":
+          nextScreen = const AdminDashboard(key: ValueKey('admin_dash'));
+          break;
+        case "staff":
+          nextScreen = const StaffDashboard(key: ValueKey('staff_dash'));
+          break;
+        default:
+          nextScreen = const MainWrapper(key: ValueKey('customer_dash'));
+      }
+    }
 
-              // Default to 'customer'
-              String role = 'customer';
-              if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                final data = userSnapshot.data!.data() as Map<String, dynamic>;
-                role = (data['role'] ?? 'customer').toString().toLowerCase();
-              }
-
-              // High-Caliber Routing Logic (Secured with ValueKeys for smooth transitions)
-              switch (role) {
-                case "admin":
-                  return const AdminDashboard(key: ValueKey('admin_dash'));
-                case "staff":
-                  return const StaffDashboard(key: ValueKey('staff_dash'));
-                default:
-                  return const MainWrapper(key: ValueKey('customer_dash'));
-              }
-            },
-          );
-        }
-
-        // 3. UNAUTHENTICATED: The Private Vault Entrance
-        else {
-          nextScreen = const LoginPage(key: ValueKey('login_page'));
-        }
-
-        // 4. THE LIQUID TRANSITION ENGINE
-        // Eliminates UI flickering and creates a premium fade between auth states.
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 1200),
-          switchInCurve: Curves.easeOutExpo,
-          switchOutCurve: Curves.easeInExpo,
-          child: nextScreen,
-        );
-      },
+    // 4. THE LIQUID TRANSITION ENGINE
+    // Eliminates UI flickering and creates a premium fade between auth states.
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 1200),
+      switchInCurve: Curves.easeOutExpo,
+      switchOutCurve: Curves.easeInExpo,
+      child: nextScreen,
     );
   }
 

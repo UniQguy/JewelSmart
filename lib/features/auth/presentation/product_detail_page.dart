@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../cart/providers/cart_provider.dart';
 import '../domain/product_model.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
+import '../../try_on/providers/active_try_on_provider.dart';
 
 /// THE EDITORIAL PRODUCT VIEW
 /// Engineered for 3D spatial depth, immersive parallax, real-time reviews, and INR currency.
@@ -57,7 +58,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
   }
 
   // --- SECURITY CLEARANCE ENGINE ---
-  // Fixes Issue #1 (Review Validation) and Issue #3 (Admin CTA)
   Future<void> _verifyUserClearance(String productId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -278,7 +278,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                           _buildBoutiqueSpecifications(product),
                           const SizedBox(height: 60),
 
-                          // FIXED: The Live Review Engine
+                          // The Live Review Engine
                           _buildReviewsSection(product.id),
 
                           const SizedBox(height: 150), // Buffer for the acquisition bar
@@ -294,6 +294,7 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
           // FLOATING ACTIONS
           _buildBackAction(context),
           _buildWishlistAction(product),
+          _buildVirtualAtelierAction(context, product), // FIXED: Passed product to the action
           _buildBottomAcquisitionBar(context, ref, product),
         ],
       ),
@@ -406,7 +407,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
     ).animate().fadeIn(duration: 800.ms, delay: 600.ms);
   }
 
-  // --- LIVE REVIEWS SECTION ---
   Widget _buildReviewsSection(String productId) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,7 +416,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
           children: [
             const Text("CLIENT IMPRESSIONS", style: TextStyle(color: Colors.white24, fontSize: 8, letterSpacing: 5, fontWeight: FontWeight.w900)),
 
-            // FIXED: Issue #1 Conditional Rendering based on Purchase History
             if (_isCheckingAccess)
               SizedBox(width: 10, height: 10, child: CircularProgressIndicator(color: luxuryGold, strokeWidth: 1))
             else if (_hasPurchased)
@@ -513,7 +512,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
     );
   }
 
-  // --- FIXED: ISSUE #3 (Admin Dynamic Rendering) ---
   Widget _buildBottomAcquisitionBar(BuildContext context, WidgetRef ref, Product product) {
     return Positioned(
       bottom: 0,
@@ -535,12 +533,10 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                   onTap: () {
                     HapticFeedback.mediumImpact();
                     if (_isAdmin) {
-                      // Admin specific action (e.g., Navigate to Edit Screen)
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text("REDIRECTING TO INVENTORY...", style: TextStyle(color: luxuryGold, fontSize: 10, letterSpacing: 2)), backgroundColor: Colors.black),
                       );
                     } else {
-                      // Normal Client action
                       ref.read(cartProvider.notifier).addItem(product);
                       _showSuccessNotification(context);
                     }
@@ -554,7 +550,6 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
                       boxShadow: [BoxShadow(color: luxuryGold.withValues(alpha: 0.1), blurRadius: 30, spreadRadius: -10)],
                     ),
                     child: Center(
-                      // Dynamically render text based on Role
                       child: Text(
                           _isAdmin ? "MANAGE ARTIFACT" : "ACQUIRE PIECE",
                           style: TextStyle(color: luxuryGold, fontWeight: FontWeight.w900, letterSpacing: 8, fontSize: 9)
@@ -656,5 +651,39 @@ class _ProductDetailPageState extends ConsumerState<ProductDetailPage> {
           }
       ),
     );
+  }
+
+  // --- THE VIRTUAL ATELIER ENTRY POINT ---
+  // FIXED: Added product parameter to accurately update the provider
+  Widget _buildVirtualAtelierAction(BuildContext context, Product product) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 70, // Placed directly below the Wishlist button
+      right: 20,
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Consumer( // Wrap the button in a Consumer
+              builder: (context, ref, child) {
+                return IconButton(
+                  icon: Icon(Icons.view_in_ar_outlined, color: luxuryGold, size: 18),
+                  onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    // 1. SET THE IMAGE URL IN RIVERPOD SECURELY
+                    ref.read(activeTryOnImageProvider.notifier).state = product.imageUrl;
+
+                    // 2. NAVIGATE TO THE ATELIER
+                    Navigator.pushNamed(context, '/try-on');
+                  },
+                  style: IconButton.styleFrom(
+                      backgroundColor: luxuryGold.withValues(alpha: 0.1),
+                      side: BorderSide(color: luxuryGold.withValues(alpha: 0.5), width: 0.5),
+                      padding: const EdgeInsets.all(12)
+                  ),
+                );
+              }
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 800.ms, delay: 600.ms).scale(curve: Curves.easeOutBack);
   }
 }
