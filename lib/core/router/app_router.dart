@@ -16,11 +16,12 @@ import '../../features/auth/presentation/search_screen.dart';
 import '../../features/auth/presentation/category_page.dart';
 import '../../features/auth/presentation/product_detail_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
+import '../../features/auth/presentation/secure_address_screen.dart'; // FIXED: Added missing import
 
 // Customer Facing (Acquisition Loop)
 import '../../features/cart/presentation/cart_page.dart';
-import '../../features/cart/presentation/checkout_page.dart'; // NEW
-import '../../features/cart/presentation/success_page.dart'; // CORRECTED PATH
+import '../../features/cart/presentation/checkout_page.dart';
+import '../../features/cart/presentation/success_page.dart';
 import '../../features/auth/presentation/repair_request_screen.dart';
 
 // Administrative Layers
@@ -30,7 +31,7 @@ import '../../features/auth/presentation/repair_management_screen.dart';
 import '../../features/admin/presentation/add_product_screen.dart';
 
 // AR Try-On
-import '../../features/try_on/presentation/try_on_page.dart'; // NEW
+import '../../features/try_on/presentation/try_on_page.dart';
 
 /// THE GLOBAL ROUTING GATEWAY
 /// Handles cinematic screen transitions and ensures proper spatial handoffs.
@@ -55,9 +56,9 @@ class AppRouter {
 
     // 2. THE GLOBAL SHELL
       case AppRoutes.main:
-        return _cinematicRoute(const MainWrapper()); // Fixed: Points to Wrapper, not Home
+        return _cinematicRoute(const MainWrapper());
 
-    // 3. ISOLATED VIEWS (Tabs inside the Wrapper, but can be pushed directly if needed)
+    // 3. ISOLATED VIEWS (Tabs inside the Wrapper)
       case AppRoutes.home:
         return _cinematicRoute(const HomePage());
 
@@ -75,7 +76,7 @@ class AppRouter {
         return _cinematicRoute(const ProductDetailPage(), settings: settings);
 
       case AppRoutes.checkout:
-        return _cinematicRoute(const CheckoutPage()); // Fixed: Added missing route
+        return _cinematicRoute(const CheckoutPage());
 
       case AppRoutes.success:
         return _cinematicRoute(const SuccessPage());
@@ -85,7 +86,7 @@ class AppRouter {
         return _cinematicRoute(CategoryPage(categoryName: categoryName));
 
     // 5. THE VIRTUAL ATELIER
-      case AppRoutes.tryOn: // Assuming you will add this to app_routes.dart
+      case AppRoutes.tryOn:
         return _cinematicRoute(const TryOnPage());
 
     // 6. ADMINISTRATIVE BACKEND
@@ -101,7 +102,11 @@ class AppRouter {
       case AppRoutes.addProduct:
         return _cinematicRoute(const AddProductScreen());
 
-        default:
+    // 7. SECURE VAULT SETTINGS
+      case AppRoutes.secureAddress:
+        return _cinematicRoute(const SecureAddressScreen());
+
+      default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
             backgroundColor: Colors.black,

@@ -4,12 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:printing/printing.dart'; // NEW: For displaying the PDF
+import 'package:printing/printing.dart';
 
 import '../../auth/data/invoice_service.dart';
 
 /// THE INVOICE GENERATOR TERMINAL
-/// Engineered for Staff to mint official financial PDF records for secured artifacts.
 class GenerateInvoiceScreen extends StatefulWidget {
   const GenerateInvoiceScreen({super.key});
 
@@ -38,7 +37,6 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
     );
 
     try {
-      // 1. Call the Engine to generate the actual PDF bytes
       final pdfBytes = await InvoiceService.generateInvoiceDocument(
         orderId: orderId,
         userId: userId,
@@ -46,15 +44,14 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
         baseTotal: amountPaid.toDouble(),
       );
 
-      // 2. Update the correct 'orders' collection
-      await FirebaseFirestore.instance.collection('orders').doc(orderId).update({
+      // FIXED: Pointed to 'purchases' so the update successfully triggers!
+      await FirebaseFirestore.instance.collection('purchases').doc(orderId).update({
         'invoiceGenerated': true,
       });
 
       if (mounted) {
         Navigator.pop(context); // Remove overlay
 
-        // 3. Open the Native PDF Viewer / Print Dialog
         await Printing.layoutPdf(
           onLayout: (format) async => pdfBytes,
           name: 'JewelSmart_Invoice_$orderId.pdf',
@@ -200,11 +197,10 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   }
 
   Widget _buildPendingInvoiceStream() {
+    // FIXED: Pointed to 'purchases' and removed the 'null' trap query!
     return StreamBuilder<QuerySnapshot>(
-      // FIXED: Changed 'purchases' to 'orders' to match the database schema
-      stream: FirebaseFirestore.instance.collection('orders')
+      stream: FirebaseFirestore.instance.collection('purchases')
           .where('status', isEqualTo: 'SECURED')
-          .where('invoiceGenerated', isEqualTo: null)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -214,12 +210,21 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
           return const Center(child: Text("NO PENDING INVOICES", style: TextStyle(color: Colors.white38, letterSpacing: 6, fontSize: 8)));
         }
 
+        // FIXED: Filter out generated invoices locally using Dart
         final orders = snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
+
+          // If invoice is already generated, skip it
+          if (data['invoiceGenerated'] == true) return false;
+
           final artifactName = (data['productName'] ?? data['title'] ?? '').toString().toLowerCase();
           final hashId = doc.id.toLowerCase();
           return artifactName.contains(_searchQuery) || hashId.contains(_searchQuery);
         }).toList();
+
+        if (orders.isEmpty) {
+          return Center(child: Text("ALL SECURED ASSETS HAVE INVOICES", style: TextStyle(color: luxuryGold, letterSpacing: 4, fontSize: 9, fontWeight: FontWeight.bold)));
+        }
 
         return AnimationLimiter(
           child: ListView.builder(
@@ -248,7 +253,6 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
   }
 
   Widget _buildInvoiceTile(String orderId, Map<String, dynamic> data) {
-    // Looked for 'title' as a fallback based on your database screenshot
     final artifactName = data['productName'] ?? data['title'] ?? 'UNKNOWN ARTIFACT';
     final amountPaid = (data['amountPaid'] ?? data['totalAmount'] ?? 0.0) as num;
     final userId = data['userId'] ?? '';
@@ -294,7 +298,6 @@ class _GenerateInvoiceScreenState extends State<GenerateInvoiceScreen> {
                       ],
                     ),
                     GestureDetector(
-                      // Pass artifactName so we can put it in the PDF
                       onTap: () => _mintInvoice(orderId, userId, amountPaid, artifactName),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

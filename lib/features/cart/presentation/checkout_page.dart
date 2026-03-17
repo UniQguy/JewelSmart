@@ -8,7 +8,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../providers/cart_provider.dart';
-import '../../auth/presentation/edit_profile_screen.dart'; // CRITICAL: Route to Address Terminal
 
 /// THE SECURITY PROTOCOL (CHECKOUT)
 /// Engineered with the Address Security Lock and Biometric Processing.
@@ -157,7 +156,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
                       address = data['address'].toString().toUpperCase();
                       hasAddress = true;
                     } else {
-                      address = "ACTION REQUIRED: UPDATE IDENTITY PROFILE";
+                      // FIXED: Messaging reflects new Secure Address Vault
+                      address = "ACTION REQUIRED: UPDATE SECURE ADDRESS";
                     }
                   }
 
@@ -273,7 +273,6 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
               _ledgerRow("SECURITY & INSURANCE", "INCLUDED"),
               const SizedBox(height: 25),
 
-              // NEW: The Live Delivery Coordinates Check
               _ledgerRow("DESTINATION", address, isAlert: !hasAddress, isMultiline: true),
 
               Padding(
@@ -312,7 +311,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
     );
   }
 
-  // MUTATING BUTTON: Changes based on Address Clearance
+  // FIXED: Mutating Button now routes correctly to the Secure Address Vault
   Widget _buildSecureAction(bool hasAddress) {
     return GestureDetector(
       onTap: () {
@@ -320,8 +319,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> with TickerProvider
           _handlePayment();
         } else {
           HapticFeedback.heavyImpact();
-          // Teleports user to Edit Profile to set coordinates
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
+          // Teleports user to the Secure Address Vault to set coordinates
+          Navigator.pushNamed(context, AppRoutes.secureAddress);
         }
       },
       child: Container(

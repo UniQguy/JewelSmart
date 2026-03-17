@@ -11,7 +11,6 @@ import '../../auth/presentation/order_detail_screen.dart';
 
 /// THE ENCRYPTED ARCHIVE (ACQUISITION HISTORY)
 /// Engineered as a high-security spatial ledger for VIP clients.
-/// FIXED: Collection Sync, Local Sorting, Web Scaling and INR (₹) Currency Applied.
 class AcquisitionHistoryPage extends StatefulWidget {
   const AcquisitionHistoryPage({super.key});
 
@@ -42,11 +41,10 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
 
-    // FIXED: Changed 'purchases' to 'orders' to match the database schema.
-    // Removed .orderBy() to prevent Firestore Composite Index Errors.
+    // FIXED: Pointed exactly to 'purchases' collection!
     final archiveStream = currentUser != null
         ? FirebaseFirestore.instance
-        .collection('orders')
+        .collection('purchases')
         .where('userId', isEqualTo: currentUser.uid)
         .snapshots()
         : const Stream.empty();
@@ -57,15 +55,13 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
       appBar: _buildSecurityAppBar(context),
       body: Stack(
         children: [
-          // 1. Deep Spatial Security Grid
           _buildAmbientSecurityBackground(),
 
-          // 2. The Live Data Ledger (Web Scaled)
           SafeArea(
             bottom: false,
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 800), // Web Scaler
+                constraints: const BoxConstraints(maxWidth: 800),
                 child: StreamBuilder<QuerySnapshot>(
                   stream: archiveStream as Stream<QuerySnapshot>?,
                   builder: (context, snapshot) {
@@ -74,7 +70,6 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
                     }
 
                     if (snapshot.hasError) {
-                      // Logs the exact error to your terminal if permissions are blocked
                       debugPrint("Archive Security Error: ${snapshot.error}");
                       return _buildErrorState();
                     }
@@ -83,12 +78,10 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
                       return _buildEmptyVault();
                     }
 
-                    // Map live Firestore documents to the PurchaseRecord model
                     final history = snapshot.data!.docs.map((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       return PurchaseRecord(
                         orderId: doc.id,
-                        // Fallback fields account for varying order document structures
                         productName: data['productName'] ?? data['title'] ?? 'UNKNOWN ARTIFACT',
                         status: data['status'] ?? 'PROCESSING',
                         purchaseDate: (data['purchaseDate'] ?? data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -96,7 +89,6 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
                       );
                     }).toList();
 
-                    // FIXED: Sort the history locally to bypass Firestore index limitations
                     history.sort((a, b) => b.purchaseDate.compareTo(a.purchaseDate));
 
                     return _buildAnimatedLedger(history);
@@ -124,7 +116,7 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 14),
               onPressed: () {
                 HapticFeedback.selectionClick();
-                Navigator.maybePop(context); // Safe routing
+                Navigator.maybePop(context);
               },
             ),
             title: Column(
@@ -170,7 +162,6 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
               );
             },
           ),
-          // Subtle tech grid to imply a secure digital vault
           CustomPaint(
             size: Size.infinite,
             painter: _ArchiveGridPainter(color: Colors.white.withValues(alpha: 0.01)),
@@ -269,7 +260,6 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
   }
 
   Widget _buildLedgerCard(BuildContext context, PurchaseRecord item) {
-    // Determines styling based on order status
     final isSecured = item.status.toUpperCase() == 'SECURED' || item.status.toUpperCase() == 'DELIVERED';
     final statusColor = isSecured ? luxuryGold : Colors.white54;
 
@@ -283,7 +273,6 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
         margin: const EdgeInsets.only(bottom: 25),
         child: Stack(
           children: [
-            // The Glassmorphic Base
             ClipRRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
@@ -304,7 +293,6 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header Row: Status and Date
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -334,14 +322,12 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
                         child: Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
                       ),
 
-                      // Item Details
                       Text(
                         item.productName.toUpperCase(),
                         style: const TextStyle(color: Colors.white, fontSize: 14, letterSpacing: 3, fontWeight: FontWeight.w200),
                       ),
                       const SizedBox(height: 15),
 
-                      // Footer Row: Hash ID and Value
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -353,11 +339,10 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
                               const SizedBox(height: 4),
                               Text(
                                 item.orderId.toUpperCase(),
-                                style: const TextStyle(color: Colors.white60, fontSize: 9, letterSpacing: 1, fontFamily: 'monospace'), // Monospace for technical feel
+                                style: const TextStyle(color: Colors.white60, fontSize: 9, letterSpacing: 1, fontFamily: 'monospace'),
                               ),
                             ],
                           ),
-                          // FIXED: INR Currency
                           Text(
                             "₹${item.amountPaid.toStringAsFixed(2)}",
                             style: TextStyle(color: luxuryGold, fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: 1),
@@ -376,7 +361,6 @@ class _AcquisitionHistoryPageState extends State<AcquisitionHistoryPage> with Ti
   }
 }
 
-/// Draws a subtle, high-tech security grid in the background
 class _ArchiveGridPainter extends CustomPainter {
   final Color color;
   _ArchiveGridPainter({required this.color});

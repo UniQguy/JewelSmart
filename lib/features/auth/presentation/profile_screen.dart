@@ -157,6 +157,10 @@ class ProfilePage extends StatelessWidget {
               }),
               _vaultItem(Icons.favorite_border_rounded, "CURATED WISHLIST", onTap: () {}),
 
+              _vaultItem(Icons.location_on_outlined, "SECURE ADDRESSES", onTap: () {
+                Navigator.pushNamed(context, '/secure-address');
+              }),
+
               // --- FIXED: ROUTING TO THE CUSTOMER-FACING REPAIR REQUEST FORM ---
               _vaultItem(Icons.handyman_outlined, "REQUEST REPAIR / CARE", onTap: () {
                 Navigator.pushNamed(context, '/repair-request');

@@ -6,7 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// THE IDENTITY MODIFICATION TERMINAL (EDIT PROFILE)
-/// Engineered to manipulate Core Identity and Logistics Coordinates in the live Firestore matrix.
+/// Engineered strictly to manipulate Core Identity. Logistics coordinates are handled in Secure Vault.
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -18,7 +18,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final Color luxuryGold = const Color(0xFFD4AF37);
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController(); // NEW: Coordinates
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -39,7 +38,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists) {
           _nameController.text = doc.data()?['name'] ?? "";
-          _addressController.text = doc.data()?['address'] ?? ""; // Pulls dynamic schema field
         }
       }
     } catch (e) {
@@ -66,11 +64,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (user != null) {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
           'name': _nameController.text.trim(),
-          'address': _addressController.text.trim(), // Dynamically creates/updates field in NoSQL
         });
 
         if (mounted) {
-          _showSecureNotification("IDENTITY & LOGISTICS UPDATED");
+          _showSecureNotification("IDENTITY UPDATED SUCCESSFULLY");
           await Future.delayed(const Duration(milliseconds: 1000));
           // SAFE POP: Prevents the blank white screen error
           if (Navigator.canPop(context)) {
@@ -120,7 +117,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _addressController.dispose();
     super.dispose();
   }
 
@@ -246,10 +242,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               _buildEditorialField("FULL LEGAL NAME", Icons.person_outline_rounded, _nameController),
               const SizedBox(height: 35),
 
-              // NEW: Address Field with multiline support
-              _buildEditorialField("DELIVERY COORDINATES", Icons.location_on_outlined, _addressController, maxLines: 3),
-              const SizedBox(height: 35),
-
               // Email is locked to prevent Auth desync crashes
               _buildEditorialField("MEMBER IDENTIFICATION (LOCKED)", Icons.lock_outline_rounded, _emailController, isReadOnly: true),
               const SizedBox(height: 120), // Bottom padding for the floating action bar
@@ -260,7 +252,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     ).animate().fadeIn(duration: 800.ms, delay: 200.ms).slideY(begin: 0.1, end: 0);
   }
 
-  // UPGRADED: Added maxLines support for long addresses
   Widget _buildEditorialField(String label, IconData icon, TextEditingController controller, {bool isReadOnly = false, int maxLines = 1}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

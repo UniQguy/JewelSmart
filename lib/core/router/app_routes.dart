@@ -32,5 +32,6 @@ class AppRoutes {
 
   // Note: acquisitionHistory is now handled via a Glassmorphic Modal in ProfilePage,
   // but keeping the constant here in case you ever want a standalone route.
+  static const String secureAddress = '/secure-address';
   static const String acquisitionHistory = '/acquisition-history';
 }
